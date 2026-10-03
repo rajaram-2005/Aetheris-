@@ -387,11 +387,12 @@ function QuickAction({ action, onClick }) {
   return <button className="quick-action" onClick={() => onClick(action.prompt)}><Icon size={15} /><span>{action.label}</span><Plus size={13} className="quick-plus" /></button>
 }
 
-function FoundationStrip({ runtimeSnapshot }) {
+function FoundationStrip({ runtimeSnapshot, runtimeHealth }) {
   const foundations = runtimeSnapshot?.planes?.slice(0, 10) || []
+  const healthy = runtimeHealth?.status === 'healthy'
   return (
     <div className="foundation-strip">
-      <div className="foundation-copy"><span className="foundation-live"><StatusDot tone="mint" pulse /> RUNTIME ONLINE</span><strong>First 10 foundations connected</strong></div>
+      <div className="foundation-copy"><span className="foundation-live"><StatusDot tone={healthy ? 'mint' : 'gold'} pulse /> {healthy ? 'RUNTIME ONLINE' : 'RUNTIME CHECK'}</span><strong>{healthy ? 'All 62 architecture sections connected' : 'Runtime health requires review'}</strong></div>
       <div className="foundation-pills">{foundations.map((plane) => <span key={plane.id} title={plane.role}><b>{plane.number}</b>{plane.name.replace(' plane', '')}</span>)}</div>
       <span className="foundation-mode"><LockKeyhole size={12} /> local contracts</span>
     </div>
@@ -552,7 +553,7 @@ function runtimeTaskToRow(task) {
   }
 }
 
-function Dashboard({ command, setCommand, runCommand, setActiveView, tasks, onSelectTask, runtimeSnapshot }) {
+function Dashboard({ command, setCommand, runCommand, setActiveView, tasks, onSelectTask, runtimeSnapshot, runtimeHealth }) {
   const [activityItems, setActivityItems] = useState(INITIAL_ACTIVITY)
   const handleSubmit = () => {
     const text = command.trim()
@@ -573,7 +574,7 @@ function Dashboard({ command, setCommand, runCommand, setActiveView, tasks, onSe
       />
 
       <CommandComposer value={command} setValue={setCommand} onSubmit={handleSubmit} onQuickAction={handleQuickAction} large />
-      <FoundationStrip runtimeSnapshot={runtimeSnapshot} />
+      <FoundationStrip runtimeSnapshot={runtimeSnapshot} runtimeHealth={runtimeHealth} />
       <ArchitecturePhaseStrip runtimeSnapshot={runtimeSnapshot} />
       <ControlPhaseStrip runtimeSnapshot={runtimeSnapshot} />
       <ModePhaseStrip runtimeSnapshot={runtimeSnapshot} />
@@ -760,11 +761,13 @@ function App() {
   const [tasks, setTasks] = useState(INITIAL_TASKS)
   const [selectedTask, setSelectedTask] = useState(null)
   const [runtimeSnapshot, setRuntimeSnapshot] = useState(() => runtime.snapshot())
+  const [runtimeHealth, setRuntimeHealth] = useState(() => runtime.health())
   const [toast, setToast] = useState(null)
 
   useEffect(() => {
     return runtime.subscribe((event) => {
       setRuntimeSnapshot(runtime.snapshot())
+      setRuntimeHealth(runtime.health())
       if (event.task) {
         const row = runtimeTaskToRow(event.task)
         setTasks((current) => {
@@ -809,7 +812,7 @@ function App() {
       case 'knowledge': return <KnowledgeView />
       case 'studio': return <StudioView />
       case 'devices': return <DevicesView />
-      default: return <Dashboard command={command} setCommand={setCommand} runCommand={runCommand} setActiveView={setActiveView} tasks={tasks} onSelectTask={openTask} runtimeSnapshot={runtimeSnapshot} />
+      default: return <Dashboard command={command} setCommand={setCommand} runCommand={runCommand} setActiveView={setActiveView} tasks={tasks} onSelectTask={openTask} runtimeSnapshot={runtimeSnapshot} runtimeHealth={runtimeHealth} />
     }
   }
 

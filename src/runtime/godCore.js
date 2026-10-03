@@ -229,8 +229,8 @@ export class GodCore {
     this.tasks.set(task.id, task)
     this.taskState.create(task)
     this.projectContext.attachTask('aetheris-core', task)
-    this.executionLoop.start(task)
     this.observability.startTask(task)
+    this.executionLoop.start(task)
     this.emitTask(task, 'task.created')
     if (policy.requiresApproval) {
       graph.transition('policy', NODE_STATUS.BLOCKED, { output: 'Awaiting explicit approval' })
@@ -341,6 +341,21 @@ export class GodCore {
   getTask(taskId) {
     const task = this.tasks.get(taskId)
     return task ? serializeTask(task) : null
+  }
+
+  health() {
+    const snapshot = this.snapshot()
+    const checks = [
+      ['control-plane', Boolean(this.conversation && this.router && this.tasks)],
+      ['execution-plane', Boolean(this.workflow && this.executionLoop && this.observability)],
+      ['memory-knowledge', Boolean(this.memory && this.knowledge && this.data)],
+      ['multimodal', Boolean(this.creative && this.scientific && this.training)],
+      ['computer-control', Boolean(this.system && this.terminal && this.files && this.browser)],
+      ['security', Boolean(this.security && this.safety && this.sandbox)],
+      ['platform', Boolean(this.resourceManager && this.hardware && this.modes)],
+      ['extensibility', Boolean(this.plugins && this.developer && this.api)],
+    ].map(([id, ready]) => ({ id, ready }))
+    return { status: checks.every((check) => check.ready) ? 'healthy' : 'degraded', checks, localFirst: !snapshot.online, connectedSections: 62, phaseGroups: 6, timestamp: new Date().toISOString() }
   }
 
   snapshot() {

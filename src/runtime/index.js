@@ -23,6 +23,30 @@ export function createAetherisRuntime(options = {}) {
     apiSpec() {
       return godCore.api.openApi()
     },
+    health() {
+      return godCore.health()
+    },
+    ingestKnowledge(source) {
+      return godCore.knowledge.ingest(source)
+    },
+    searchKnowledge(query, options = {}) {
+      return godCore.knowledge.search(query, options)
+    },
+    registerPlugin(plugin) {
+      return godCore.plugins.register(plugin)
+    },
+    defineCapability(manifest) {
+      return godCore.developer.define(manifest)
+    },
+    publishCapability(id) {
+      return godCore.developer.publish(id)
+    },
+    getTrace(taskId) {
+      return godCore.observability.get(taskId)
+    },
+    recoverTask(taskId) {
+      return godCore.taskState.recover(taskId)
+    },
     snapshot() {
       return godCore.snapshot()
     },
