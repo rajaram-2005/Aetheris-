@@ -42,6 +42,19 @@ export const CONTROL_PHASES = [
   { id: 'security-architecture', number: '30', name: 'Security architecture', role: 'Layered permissions and sandbox' },
 ]
 
+export const MODE_PHASES = [
+  { id: 'sandbox', number: '31', name: 'Sandbox', role: 'Isolate code, tools, and file access' },
+  { id: 'industrial-iot', number: '32', name: 'Industrial / IoT', role: 'OPC-UA, Modbus, MQTT gateways' },
+  { id: 'digital-twin', number: '33', name: 'Digital twin', role: 'Sensors, simulation, prediction' },
+  { id: 'scientific-mode', number: '34', name: 'Scientific mode', role: 'Evidence, equations, uncertainty' },
+  { id: 'education-mode', number: '35', name: 'Education mode', role: 'Assess, teach, adapt, evaluate' },
+  { id: 'creative-studio', number: '36', name: 'Creative studio', role: 'Writing, visual, audio, editor' },
+  { id: 'research-mode', number: '37', name: 'Research mode', role: 'Retrieve, cross-check, cite' },
+  { id: 'verification-engine', number: '38', name: 'Verification engine', role: 'Factual, logical, technical, safety, quality' },
+  { id: 'self-healing', number: '39', name: 'Self-healing workflow', role: 'Diagnose, fix, sandbox, test' },
+  { id: 'observability', number: '40', name: 'Observability', role: 'Trace without private chain-of-thought' },
+]
+
 export const AGENT_GROUPS = [
   { id: 'intelligence', name: 'Intelligence', agents: ['Reasoning', 'Planning', 'Problem Solving', 'Strategy', 'Critique', 'Verification', 'Meta-Learning'] },
   { id: 'software', name: 'Software & digital engineering', agents: ['Software Architecture', 'Programming', 'Debugging', 'Testing', 'DevOps', 'Database', 'Cybersecurity'] },

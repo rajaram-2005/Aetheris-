@@ -2,7 +2,7 @@ import { ConversationPlane } from './conversation.js'
 import { createMultimodalPlan } from './multimodal.js'
 import { ModelRouter } from './router.js'
 import { createExecutionGraph, NODE_STATUS } from './taskGraph.js'
-import { PLANE_DEFINITIONS, ARCHITECTURE_PHASES, CONTROL_PHASES, MODEL_DEFINITIONS } from './registry.js'
+import { PLANE_DEFINITIONS, ARCHITECTURE_PHASES, CONTROL_PHASES, MODE_PHASES, MODEL_DEFINITIONS } from './registry.js'
 import { KnowledgeFabric } from './knowledgeFabric.js'
 import { MemoryFabric } from './memoryFabric.js'
 import { MetaLearningEngine } from './metaLearning.js'
@@ -18,6 +18,16 @@ import { ProjectWork } from './projectWork.js'
 import { WorkflowEngine } from './workflowEngine.js'
 import { AgentSwarm } from './agentSwarm.js'
 import { ComputerUseLoop } from './computerUseLoop.js'
+import { SandboxRuntime } from './sandbox.js'
+import { IndustrialGateway } from './industrialGateway.js'
+import { DigitalTwinEngine } from './digitalTwin.js'
+import { ScientificMode } from './scientificMode.js'
+import { EducationMode } from './educationMode.js'
+import { CreativeStudio } from './creativeStudio.js'
+import { ResearchMode } from './researchMode.js'
+import { VerificationEngine } from './verificationEngine.js'
+import { SelfHealingWorkflow } from './selfHealing.js'
+import { ObservabilityLedger } from './observability.js'
 
 export class GodCore {
   constructor({ projectId = 'aetheris-core', projectName = 'Aetheris / Core', online = false, emit = () => {} } = {}) {
@@ -35,6 +45,16 @@ export class GodCore {
     this.computer = new ComputerControlLoop({ tools: this.tools, system: this.system })
     this.computerUse = new ComputerUseLoop({ computer: this.computer, terminal: this.terminal, files: this.files, applications: this.applications, browser: this.browser })
     this.projectWork = new ProjectWork({ files: this.files, terminal: this.terminal, security: this.security })
+    this.sandbox = new SandboxRuntime({ security: this.security })
+    this.digitalTwin = new DigitalTwinEngine()
+    this.industrial = new IndustrialGateway({ security: this.security, twin: this.digitalTwin })
+    this.scientific = new ScientificMode({ twin: this.digitalTwin, sandbox: this.sandbox })
+    this.education = new EducationMode()
+    this.creative = new CreativeStudio()
+    this.research = new ResearchMode({ knowledge: this.knowledge })
+    this.verification = new VerificationEngine()
+    this.selfHealing = new SelfHealingWorkflow({ sandbox: this.sandbox, verification: this.verification })
+    this.observability = new ObservabilityLedger()
     this.workflow = new WorkflowEngine()
     this.swarm = new AgentSwarm({ emit })
     this.conversation = new ConversationPlane({ projectId, projectName })
@@ -70,6 +90,17 @@ export class GodCore {
     const filePlan = /file|folder|project|delete|remove/i.test(understanding.text) ? this.files.planOperation(/delete|remove/i.test(understanding.text) ? 'delete' : 'read', understanding.text, { approved: options.approved }) : null
     const browserPlan = understanding.risk.networkRequested ? this.browser.planNavigation(understanding.text, { approved: options.approved }) : null
     const projectPlan = understanding.intent === 'software' ? this.projectWork.plan(understanding.text, { approved: options.approved }) : null
+    const sandboxProfile = understanding.intent === 'software' || understanding.intent === 'engineering' ? 'code' : understanding.risk.networkRequested ? 'network' : understanding.intent === 'computer-control' ? 'tool' : 'readonly'
+    const sandboxInstance = this.sandbox.create({ taskId: `pending-${this.taskSequence}`, profile: sandboxProfile, scope: 'project', approved: options.approved })
+    const sandboxPlan = { ...sandboxInstance, cleanup: 'terminate-after-verification' }
+    const industrialPlan = understanding.risk.physicalAction || /plc|scada|industrial|iot|robot/i.test(understanding.text) ? this.industrial.planAction('converter-plc', 'validate', { simulation: true, authorized: false }) : null
+    const twinPlan = /digital twin|sensor|waveform|predict|calibrate/i.test(understanding.text) || understanding.intent === 'engineering' ? { twin: this.digitalTwin.createTwin({ id: 'project-atlas-twin', name: 'Project Atlas digital twin', domain: 'engineering' }), simulation: 'available before physical action' } : null
+    const scientificPlan = understanding.intent === 'engineering' || /equation|calculate|physics|chemistry|biology|uncertainty/i.test(understanding.text) ? this.scientific.plan(understanding.text, { domain: understanding.intent }) : null
+    const educationPlan = understanding.intent === 'education' ? this.education.planLesson('local-learner', understanding.text) : null
+    const creativePlan = understanding.intent === 'creation' ? this.creative.plan(understanding.text, { output: multimodal.output === 'default' ? 'auto' : multimodal.output }) : null
+    const researchPlan = understanding.intent === 'research' ? this.research.plan(understanding.text, { online: this.security.online }) : null
+    const verificationPlan = this.verification.plan({ plan: { knowledgeEvidence } })
+    const selfHealingPlan = { onFailure: ['diagnose', 'propose fix', 'sandbox', 'test', 'verify'], retries: 2, concealFailure: false }
     const workflowPlan = this.workflow.define({
       id: `workflow-${this.taskSequence}`,
       name: `${understanding.intent} orchestration`,
@@ -93,6 +124,15 @@ export class GodCore {
       filePlan,
       browserPlan,
       projectPlan,
+      sandboxPlan,
+      industrialPlan,
+      twinPlan,
+      scientificPlan,
+      educationPlan,
+      creativePlan,
+      researchPlan,
+      verificationPlan,
+      selfHealingPlan,
       workflowPlan,
       swarm,
       knowledgeEvidence,
@@ -111,6 +151,7 @@ export class GodCore {
       tools: plan.tools,
       workflowId: workflowPlan.id,
       swarmId: swarm.id,
+      sandboxId: sandboxInstance.id,
       plan,
       graph,
       createdAt: new Date().toISOString(),
@@ -119,6 +160,7 @@ export class GodCore {
     }
 
     this.tasks.set(task.id, task)
+    this.observability.startTask(task)
     this.emitTask(task, 'task.created')
     if (policy.requiresApproval) {
       graph.transition('policy', NODE_STATUS.BLOCKED, { output: 'Awaiting explicit approval' })
@@ -136,6 +178,9 @@ export class GodCore {
     if (!task || task.status !== 'Awaiting approval') return task ? serializeTask(task) : null
     task.status = 'Running'
     this.security.approve(task.id, { intent: task.intent })
+    const approvedSandbox = this.sandbox.create({ taskId: task.id, profile: task.plan.sandboxPlan.profile, scope: 'project', approved: true })
+    task.sandboxId = approvedSandbox.id
+    task.plan.sandboxPlan = { ...approvedSandbox, cleanup: 'terminate-after-verification' }
     task.plan.security = { ...task.plan.security, approved: true, requiresApproval: false, reason: 'Approved by user' }
     task.plan.policy = task.plan.security
     task.plan.toolPlan = this.tools.plan(task.plan.understanding, { approved: true })
@@ -176,23 +221,30 @@ export class GodCore {
 
       task.graph.transition(nodeId, NODE_STATUS.RUNNING)
       task.checkpoint = nodeId
+      this.observability.record(task.id, 'node.started', { nodeId, kind: node.kind, label: node.label })
       this.addActivity(task, activityTitle(node, 'started'), node.detail, activityTone(node.kind))
       this.emitTask(task, 'task.node-started')
 
       setTimeout(() => {
         if (!this.tasks.has(task.id) || task.status === 'Paused') return
         task.graph.transition(nodeId, NODE_STATUS.COMPLETED, { output: outputFor(node, task) })
+        this.observability.record(task.id, 'node.completed', { nodeId, kind: node.kind, label: node.label })
         task.progress = Math.round((task.graph.completedCount() / task.graph.nodes.size) * 100)
         task.status = nodeId === 'respond' ? 'Completed' : 'Running'
         if (nodeId === 'respond') {
           task.checkpoint = 'complete'
+          const verification = this.verification.evaluate(task)
           const evaluation = this.metaLearning.evaluate(task)
           this.memory.rememberTask(task, evaluation)
           this.metaLearning.updateStrategy(task, evaluation)
+          this.selfHealing.record(task.id, { status: 'healthy', test: verification.passed ? 'passed' : 'needs-review' })
+          this.sandbox.terminate(task.sandboxId)
           this.swarm.disband(task.swarmId)
+          this.observability.completeTask(task.id, { status: 'Completed', verification: verification.status })
           this.conversation.remember(task)
-          this.conversation.addMessage('assistant', responseFor(task), { taskId: task.id, evaluation })
+          this.conversation.addMessage('assistant', responseFor(task), { taskId: task.id, evaluation, verification })
           task.evaluation = evaluation
+          task.verification = verification
         }
         this.addActivity(task, activityTitle(node, 'completed'), node.kind === 'agent' ? `${node.label} · ${node.detail}` : node.detail, activityTone(node.kind))
         this.emitTask(task, nodeId === 'respond' ? 'task.completed' : 'task.node-completed')
@@ -213,6 +265,7 @@ export class GodCore {
       planes: PLANE_DEFINITIONS,
       phases: ARCHITECTURE_PHASES,
       controlPhases: CONTROL_PHASES,
+      modePhases: MODE_PHASES,
       agentsOnline: 42,
       agentCount: 56,
       modelCount: MODEL_DEFINITIONS.length,
@@ -226,6 +279,16 @@ export class GodCore {
       project: this.projectWork.snapshot(),
       workflows: this.workflow.snapshot(),
       swarms: this.swarm.snapshot(),
+      sandbox: this.sandbox.snapshot(),
+      industrial: this.industrial.snapshot(),
+      digitalTwin: this.digitalTwin.snapshot(),
+      scientific: this.scientific.snapshot(),
+      education: this.education.snapshot(),
+      creative: this.creative.snapshot(),
+      research: this.research.snapshot(),
+      verification: this.verification.snapshot(),
+      selfHealing: this.selfHealing.snapshot(),
+      observability: this.observability.snapshot(),
       knowledge: this.knowledge.snapshot(),
       memory: this.memory.snapshot(),
       learning: this.metaLearning.snapshot(),
