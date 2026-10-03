@@ -11,6 +11,15 @@ export function createAetherisRuntime(options = {}) {
     approve(taskId) {
       return godCore.approve(taskId)
     },
+    pauseTask(taskId, reason) {
+      return godCore.pause(taskId, reason)
+    },
+    resumeTask(taskId) {
+      return godCore.resume(taskId)
+    },
+    cancelTask(taskId, reason) {
+      return godCore.cancel(taskId, reason)
+    },
     getTask(taskId) {
       return godCore.getTask(taskId)
     },

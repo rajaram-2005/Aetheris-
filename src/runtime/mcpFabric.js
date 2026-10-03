@@ -27,7 +27,10 @@ export const MCP_SERVERS = [
 export const MCP_TOOLS = [
   tool('aetheris.core.plan_task', 'Plan task', 'aetheris.core', 'conversation', 0, 'Convert a request into an observable execution plan.'),
   tool('aetheris.core.observe_task', 'Observe task', 'aetheris.core', 'conversation', 1, 'Read current task state and checkpoint.'),
-  tool('aetheris.core.resume_task', 'Resume task', 'aetheris.core', 'conversation', 2, 'Resume a task from its last safe checkpoint.'),
+  tool('aetheris.core.list_tasks', 'List tasks', 'aetheris.core', 'conversation', 0, 'List task state without private chain-of-thought.'),
+  tool('aetheris.core.pause_task', 'Pause task', 'aetheris.core', 'conversation', 2, 'Pause a running task at a safe checkpoint.'),
+  tool('aetheris.core.resume_task', 'Resume task', 'aetheris.core', 'conversation', 2, 'Resume a paused task from its last safe checkpoint.'),
+  tool('aetheris.core.cancel_task', 'Cancel task', 'aetheris.core', 'conversation', 2, 'Cancel a run and release its local resources.'),
   tool('aetheris.knowledge.search', 'Search knowledge', 'aetheris.knowledge', 'memory', 1, 'Search the local vector and graph indexes.'),
   tool('aetheris.knowledge.ingest', 'Ingest knowledge', 'aetheris.knowledge', 'memory', 2, 'Parse and index an approved local source.'),
   tool('aetheris.memory.retrieve', 'Retrieve memory', 'aetheris.memory', 'memory', 1, 'Retrieve working, episodic, semantic, and strategy memory.'),
@@ -65,10 +68,11 @@ export const MCP_TOOLS = [
 ]
 
 export class McpFabric {
-  constructor({ security, network, handlers = {} } = {}) {
+  constructor({ security, network, handlers = {}, emit = () => {} } = {}) {
     this.security = security
     this.network = network
     this.handlers = handlers
+    this.emit = emit
     this.servers = new Map(MCP_SERVERS.map((server) => [server.id, { ...server, status: 'connected' }]))
     this.tools = new Map(MCP_TOOLS.map((entry) => [entry.name, { ...entry }]))
     this.audit = []
@@ -118,7 +122,7 @@ export class McpFabric {
   call(name, args = {}, context = {}) {
     const id = `mcp-${this.sequence++}`
     const entry = this.tools.get(name)
-    if (!entry) return this.result(id, name, null, { status: 'not-found', message: 'MCP tool is not registered' })
+    if (!entry) return this.publish(this.result(id, name, null, { status: 'not-found', message: 'MCP tool is not registered' }))
     const server = this.servers.get(entry.server)
     const onlineBlocked = !server?.offline && !this.network.online
     const needsApproval = entry.level > (this.security.defaultLevel ?? 3) && !context.approved
@@ -127,7 +131,7 @@ export class McpFabric {
       const reason = onlineBlocked ? 'Tool requires APPROVED ONLINE mode' : physical ? 'Tool requires device or industrial authorization' : `Tool requires security level ${entry.level} approval`
       const blocked = this.result(id, name, entry, { status: 'blocked', reason, offline: !this.network.online })
       this.audit.unshift(blocked)
-      return blocked
+      return this.publish(blocked)
     }
     let data = { status: 'adapter-ready', tool: name, args }
     const handler = this.handlers[name]
@@ -137,6 +141,11 @@ export class McpFabric {
     const response = this.result(id, name, entry, data)
     this.audit.unshift(response)
     this.audit = this.audit.slice(0, 300)
+    return this.publish(response)
+  }
+
+  publish(response) {
+    this.emit({ type: 'mcp.call', response })
     return response
   }
 

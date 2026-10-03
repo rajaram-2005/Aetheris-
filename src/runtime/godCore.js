@@ -100,10 +100,13 @@ export class GodCore {
     this.api = new UniversalApi({ runtime: this })
     this.tasks = new Map()
     this.taskSequence = 1043
-    this.mcp = new McpFabric({ security: this.security, network: this.network, handlers: {
+    this.mcp = new McpFabric({ security: this.security, network: this.network, emit, handlers: {
       'aetheris.core.plan_task': (args) => this.commandCatalog.resolve(args.request || args.text || ''),
       'aetheris.core.observe_task': (args) => this.getTask(args.taskId),
-      'aetheris.core.resume_task': (args) => this.taskState.recover(args.taskId),
+      'aetheris.core.list_tasks': () => [...this.tasks.values()].map(serializeTask),
+      'aetheris.core.pause_task': (args) => this.pause(args.taskId, args.reason),
+      'aetheris.core.resume_task': (args) => this.resume(args.taskId),
+      'aetheris.core.cancel_task': (args) => this.cancel(args.taskId, args.reason),
       'aetheris.knowledge.search': (args) => this.knowledge.search(args.query || '', args.options || {}),
       'aetheris.knowledge.ingest': (args) => this.knowledge.ingest(args.source || args),
       'aetheris.memory.retrieve': (args) => this.memory.retrieve(args.query || '', args.options || {}),
@@ -323,7 +326,53 @@ export class GodCore {
     return serializeTask(task)
   }
 
-  execute(task) {
+  pause(taskId, reason = 'Paused by user') {
+    const task = this.tasks.get(taskId)
+    if (!task || !['Running'].includes(task.status)) return task ? serializeTask(task) : null
+    task.status = 'Paused'
+    task.pauseReason = reason
+    this.taskState.pause(taskId, reason)
+    this.executionLoop.pause(taskId, reason)
+    this.observability.record(taskId, 'task.paused', { checkpoint: task.checkpoint, reason })
+    this.addActivity(task, 'Run paused safely', `${task.checkpoint} checkpoint retained`, 'gold')
+    this.emitTask(task, 'task.paused')
+    return serializeTask(task)
+  }
+
+  resume(taskId) {
+    const task = this.tasks.get(taskId)
+    if (!task || task.status !== 'Paused') return task ? serializeTask(task) : null
+    task.status = 'Running'
+    task.pauseReason = null
+    this.taskState.resume(taskId)
+    this.executionLoop.resume(taskId)
+    this.observability.record(taskId, 'task.resumed', { checkpoint: task.checkpoint })
+    this.addActivity(task, 'Run resumed', `Continuing from ${task.checkpoint}`, 'mint')
+    this.emitTask(task, 'task.resumed')
+    this.execute(task, { resume: true })
+    return serializeTask(task)
+  }
+
+  cancel(taskId, reason = 'Cancelled by user') {
+    const task = this.tasks.get(taskId)
+    if (!task || ['Completed', 'Cancelled', 'Failed'].includes(task.status)) return task ? serializeTask(task) : null
+    task.status = 'Cancelled'
+    task.cancelReason = reason
+    task.graph.toJSON().forEach((node) => {
+      if (![NODE_STATUS.COMPLETED, NODE_STATUS.BLOCKED].includes(node.status)) task.graph.transition(node.id, NODE_STATUS.BLOCKED, { output: 'Cancelled by user' })
+    })
+    this.taskState.cancel(taskId, reason)
+    this.executionLoop.cancel(taskId, reason)
+    this.observability.completeTask(taskId, { status: 'Cancelled', verification: 'not-run' })
+    this.resourceManager.release(task.id)
+    this.sandbox.terminate(task.sandboxId)
+    this.swarm.disband(task.swarmId)
+    this.addActivity(task, 'Run cancelled', reason, 'gold')
+    this.emitTask(task, 'task.cancelled')
+    return serializeTask(task)
+  }
+
+  execute(task, { resume = false } = {}) {
     const sequence = [
       'intent',
       'context',
@@ -343,7 +392,7 @@ export class GodCore {
     // contract a real worker queue would use when replacing these simulated steps.
     const runNode = (index) => {
       if (index >= sequence.length) return
-      if (!this.tasks.has(task.id) || task.status === 'Paused' || task.status === 'Awaiting approval') return
+      if (!this.tasks.has(task.id) || ['Paused', 'Awaiting approval', 'Cancelled'].includes(task.status)) return
 
       const nodeId = sequence[index]
       const node = task.graph.get(nodeId)
@@ -357,7 +406,7 @@ export class GodCore {
       this.emitTask(task, 'task.node-started')
 
       setTimeout(() => {
-        if (!this.tasks.has(task.id) || task.status === 'Paused') return
+        if (!this.tasks.has(task.id) || ['Paused', 'Awaiting approval', 'Cancelled'].includes(task.status)) return
         task.graph.transition(nodeId, NODE_STATUS.COMPLETED, { output: outputFor(node, task) })
         this.executionLoop.transition(task.id, loopStageForNode(nodeId), 'completed')
         this.taskState.checkpoint(task.id, nodeId, { status: 'Running' })
@@ -398,7 +447,8 @@ export class GodCore {
       }, delay(index))
     }
 
-    runNode(0)
+    const firstPending = resume ? sequence.findIndex((nodeId) => ![NODE_STATUS.COMPLETED, NODE_STATUS.BLOCKED].includes(task.graph.get(nodeId)?.status)) : 0
+    runNode(firstPending < 0 ? sequence.length : firstPending)
   }
 
   getTask(taskId) {

@@ -75,7 +75,7 @@ const NAV_ITEMS = [
   { id: 'workflows', label: 'Workflows', icon: Workflow, count: '04' },
   { id: 'agents', label: 'Agent fabric', icon: Bot, count: '56' },
   { id: 'models', label: 'Model registry', icon: Cpu },
-  { id: 'mcp', label: 'MCP toolbox', icon: Cable, count: '37' },
+  { id: 'mcp', label: 'MCP toolbox', icon: Cable, count: '40' },
   { id: 'knowledge', label: 'Knowledge', icon: BookOpen },
   { id: 'studio', label: 'Creative studio', icon: Sparkles },
   { id: 'devices', label: 'Devices & system', icon: Monitor },
@@ -519,8 +519,8 @@ function ActivityFeed({ items = INITIAL_ACTIVITY }) {
 }
 
 function TaskStatus({ status }) {
-  const icon = status === 'Completed' ? CircleCheck : status === 'Running' ? Activity : status === 'Verification' ? Eye : Clock3
-  const tone = status === 'Completed' ? 'mint' : status === 'Running' ? 'blue' : status === 'Verification' ? 'violet' : 'gold'
+  const icon = status === 'Completed' ? CircleCheck : status === 'Running' ? Activity : status === 'Paused' ? Pause : status === 'Cancelled' ? X : status === 'Verification' ? Eye : Clock3
+  const tone = status === 'Completed' ? 'mint' : status === 'Running' ? 'blue' : status === 'Paused' ? 'gold' : status === 'Cancelled' ? 'coral' : status === 'Verification' ? 'violet' : 'gold'
   const Icon = icon
   return <span className={`task-status ${tone}`}><Icon size={12} />{status}</span>
 }
@@ -539,7 +539,7 @@ function TaskRow({ task, onSelect }) {
 }
 
 function runtimeTaskToRow(task) {
-  const color = task.status === 'Completed' ? 'mint' : task.status === 'Awaiting approval' ? 'gold' : task.intent === 'creation' ? 'coral' : 'mint'
+  const color = task.status === 'Completed' ? 'mint' : ['Awaiting approval', 'Paused'].includes(task.status) ? 'gold' : task.status === 'Cancelled' ? 'coral' : task.intent === 'creation' ? 'coral' : 'mint'
   return {
     id: task.id,
     title: task.objective,
@@ -694,27 +694,75 @@ function Factor({ label, value, width, tone }) {
   return <div className="factor"><div><span>{label}</span><strong>{value}</strong></div><div className="factor-track"><span className={tone} style={{ width }} /></div></div>
 }
 
+const MCP_ARG_PRESETS = {
+  'aetheris.core.plan_task': { request: 'Inspect the current project and propose the next safe step.' },
+  'aetheris.knowledge.search': { query: 'converter architecture', options: {} },
+  'aetheris.memory.retrieve': { query: 'recent engineering decisions', options: {} },
+  'aetheris.media.plan': { brief: 'Photorealistic local visual for the current project', output: 'image' },
+  'aetheris.media.render': { brief: 'Photorealistic local visual for the current project', output: 'image' },
+  'aetheris.files.search': { query: 'src', options: {} },
+  'aetheris.terminal.plan': { command: 'npm run build', options: { sandbox: true } },
+  'aetheris.twin.simulate': { twinId: 'project-atlas-twin', scenario: { voltage: 400, load: 0.8 } },
+  'aetheris.industrial.read_telemetry': { deviceId: 'lab-gateway' },
+  'aetheris.data.query': { table: 'tasks' },
+}
+
 function McpView({ runtime, runtimeSnapshot }) {
   const [query, setQuery] = useState('')
+  const [serverFilter, setServerFilter] = useState('all')
   const [offlineOnly, setOfflineOnly] = useState(true)
   const [notice, setNotice] = useState(null)
-  const tools = runtime.discoverMcp({ query, offlineOnly })
+  const [selectedName, setSelectedName] = useState(null)
+  const [argsText, setArgsText] = useState('{}')
+  const [approved, setApproved] = useState(false)
+  const [output, setOutput] = useState(null)
+  const [favorites, setFavorites] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('aetheris.mcp.favorites') || '[]') } catch { return [] }
+  })
   const mcp = runtimeSnapshot?.mcp || {}
-  const callTool = (tool) => {
-    const result = runtime.callMcp(tool.name, {}, { approved: tool.level <= 3 })
-    setNotice({ name: tool.title, status: result.status, reason: result.reason || 'adapter response recorded' })
+  const tools = runtime.discoverMcp({ query, offlineOnly }).filter((tool) => serverFilter === 'all' || tool.server === serverFilter)
+  const selectedTool = selectedName ? runtime.discoverMcp({ query: selectedName }).find((tool) => tool.name === selectedName) : null
+  const servers = mcp.serversList || []
+
+  useEffect(() => {
+    try { localStorage.setItem('aetheris.mcp.favorites', JSON.stringify(favorites)) } catch { /* Local persistence is best effort. */ }
+  }, [favorites])
+
+  const inspectTool = (tool) => {
+    setSelectedName(tool.name)
+    setArgsText(JSON.stringify(MCP_ARG_PRESETS[tool.name] || {}, null, 2))
+    setApproved(false)
+    setOutput(null)
   }
+
+  const invokeTool = () => {
+    if (!selectedTool) return
+    let args
+    try {
+      args = JSON.parse(argsText || '{}')
+    } catch (error) {
+      setNotice({ name: selectedTool.title, status: 'invalid-input', reason: error.message })
+      return
+    }
+    const result = runtime.callMcp(selectedTool.name, args, { approved: approved || selectedTool.level <= 3, source: 'mcp-console' })
+    setOutput(result)
+    setNotice({ name: selectedTool.title, status: result.status, reason: result.reason || 'structured response recorded' })
+  }
+
+  const toggleFavorite = (name) => setFavorites((current) => current.includes(name) ? current.filter((item) => item !== name) : [...current, name])
+
   return (
     <div className="page-content">
       <PageHeader eyebrow="TOOL PLANE / MCP FABRIC" title={<>Every capability, <em>callable.</em></>} description="Discover, permission, invoke, and observe MCP tools across every Aetheris plane without leaving the control surface." action={{ label: 'Register server', icon: Plus }} />
       <div className="mcp-health-grid"><div className="mcp-health-card"><div className="mcp-health-icon mint"><Cable size={18} /></div><div><span>CONNECTED SERVERS</span><strong>{mcp.connectedServers || 0} / {mcp.servers || 0}</strong><small>in-process adapters</small></div></div><div className="mcp-health-card"><div className="mcp-health-icon violet"><Wrench size={18} /></div><div><span>DISCOVERED TOOLS</span><strong>{mcp.tools || 0}</strong><small>across every plane</small></div></div><div className="mcp-health-card"><div className="mcp-health-icon gold"><LockKeyhole size={18} /></div><div><span>OFFLINE AVAILABLE</span><strong>{mcp.offlineAvailable || 0}</strong><small>no network required</small></div></div><div className="mcp-health-card"><div className="mcp-health-icon blue"><Activity size={18} /></div><div><span>AUDIT EVENTS</span><strong>{mcp.auditEvents || 0}</strong><small>JSON-RPC envelopes</small></div></div></div>
-      <div className="mcp-toolbar"><div className="search-box wide"><Search size={16} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search MCP tools across every plane" /></div><button className={`mcp-mode-toggle ${offlineOnly ? 'active' : ''}`} onClick={() => setOfflineOnly(!offlineOnly)}><LockKeyhole size={14} /> {offlineOnly ? 'LOCAL ONLY' : 'ALL SERVERS'}</button></div>
-      {notice && <div className={`mcp-notice ${notice.status === 'blocked' ? 'blocked' : ''}`}><CircleCheck size={15} /><span><strong>{notice.name}</strong> · {notice.status} · {notice.reason}</span><button onClick={() => setNotice(null)}><X size={14} /></button></div>}
-      <section className="panel mcp-panel"><PanelHeader eyebrow={`DISCOVERY / ${tools.length} MATCHES`} title="MCP toolbox" action="Open protocol spec" /><div className="mcp-tool-grid">{tools.map((tool) => <div className="mcp-tool-card" key={tool.name}><div className="mcp-tool-head"><span className="mcp-tool-server">{tool.server}</span><span className={`mcp-level level-${tool.level}`}>L{tool.level}</span></div><strong>{tool.title}</strong><p>{tool.description}</p><div className="mcp-tool-foot"><span>{tool.plane}</span><button onClick={() => callTool(tool)}>Call tool <ArrowRight size={12} /></button></div></div>)}</div></section>
+      <div className="mcp-toolbar"><div className="search-box wide"><Search size={16} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search MCP tools across every plane" /></div><select className="mcp-server-select" value={serverFilter} onChange={(event) => setServerFilter(event.target.value)}><option value="all">All servers</option>{servers.map((server) => <option key={server.id} value={server.id}>{server.id}</option>)}</select><button className={`mcp-mode-toggle ${offlineOnly ? 'active' : ''}`} onClick={() => setOfflineOnly(!offlineOnly)}><LockKeyhole size={14} /> {offlineOnly ? 'LOCAL ONLY' : 'ALL SERVERS'}</button></div>
+      {notice && <div className={`mcp-notice ${notice.status === 'blocked' || notice.status === 'invalid-input' ? 'blocked' : ''}`}><CircleCheck size={15} /><span><strong>{notice.name}</strong> · {notice.status} · {notice.reason}</span><button onClick={() => setNotice(null)}><X size={14} /></button></div>}
+      <div className="mcp-workbench"><section className="panel mcp-panel"><PanelHeader eyebrow={`DISCOVERY / ${tools.length} MATCHES`} title="MCP toolbox" action="Open protocol spec" /><div className="mcp-tool-grid">{tools.map((tool) => <div className={`mcp-tool-card ${selectedName === tool.name ? 'selected' : ''}`} key={tool.name}><div className="mcp-tool-head"><span className="mcp-tool-server">{tool.server}</span><div className="mcp-tool-actions"><button className={`mcp-favorite ${favorites.includes(tool.name) ? 'active' : ''}`} onClick={() => toggleFavorite(tool.name)} aria-label="Toggle favorite">{favorites.includes(tool.name) ? '★' : '☆'}</button><span className={`mcp-level level-${tool.level}`}>L{tool.level}</span></div></div><strong>{tool.title}</strong><p>{tool.description}</p><div className="mcp-tool-foot"><span>{tool.plane}</span><button onClick={() => inspectTool(tool)}>Inspect <ArrowRight size={12} /></button></div></div>)}</div></section>
+        <aside className="panel mcp-inspector"><div className="mcp-inspector-head"><div><span className="panel-eyebrow">MCP CONSOLE / JSON-RPC</span><h3>{selectedTool?.title || 'Select a tool'}</h3></div>{selectedTool && <button className="icon-button" onClick={() => setSelectedName(null)}><X size={16} /></button>}</div>{selectedTool ? <><div className="mcp-inspector-meta"><span>{selectedTool.name}</span><span className={`mcp-level level-${selectedTool.level}`}>SECURITY L{selectedTool.level}</span></div><label className="mcp-field-label">ARGUMENTS / JSON<textarea value={argsText} onChange={(event) => setArgsText(event.target.value)} spellCheck="false" /></label><label className="mcp-approval"><input type="checkbox" checked={approved} onChange={(event) => setApproved(event.target.checked)} /><span>Grant one-call approval for this tool</span><LockKeyhole size={13} /></label><button className="primary-small mcp-invoke" onClick={invokeTool}><Play size={14} /> Invoke locally <ArrowRight size={13} /></button>{output && <div className="mcp-output"><div><span>RESPONSE / {output.status}</span><button onClick={() => setOutput(null)}><X size={12} /></button></div><pre>{JSON.stringify(output, null, 2)}</pre></div>}</> : <div className="mcp-empty"><Cable size={25} /><strong>Choose any tool to inspect it</strong><span>Arguments, permissions, and the structured response stay visible in one local console.</span></div>}</aside>
+      </div>
     </div>
   )
 }
-
 function KnowledgeView({ runtimeSnapshot }) {
   const modelKnowledge = runtimeSnapshot?.modelKnowledge || {}
   const offlineMemory = runtimeSnapshot?.offlineMemory || {}
@@ -776,11 +824,14 @@ function DeviceCard({ device }) {
   return <div className="device-card"><div className={`device-icon ${device.tone}`}><Icon size={19} /></div><div className="device-copy"><strong>{device.name}</strong><span>{device.detail}</span></div><div className="device-status"><span><StatusDot tone={device.tone} />{device.status}</span><strong>{device.metric}</strong></div><MoreHorizontal size={16} className="muted-icon" /></div>
 }
 
-function TaskDrawer({ task, onClose, onPause, onApprove }) {
+function TaskDrawer({ task, onClose, onPause, onResume, onCancel, onApprove }) {
   if (!task) return null
   const isDraft = task.status === 'Draft'
   const awaitingApproval = task.status === 'Awaiting approval'
-  return <div className="drawer-backdrop" onClick={onClose}><aside className="task-drawer" onClick={(event) => event.stopPropagation()}><div className="drawer-head"><div><span className="panel-eyebrow">TASK TRACE / {task.id}</span><h2>{task.title}</h2></div><button className="icon-button" onClick={onClose}><X size={18} /></button></div><div className="drawer-state"><TaskStatus status={isDraft || awaitingApproval ? 'Awaiting approval' : task.status} /><span><Clock3 size={13} /> updated just now</span></div><div className="drawer-progress"><div><span>Overall progress</span><strong>{task.progress || 0}%</strong></div><div className="progress-track large"><span style={{ width: `${task.progress || 0}%` }} /></div></div><div className="drawer-section"><span className="panel-eyebrow">EXECUTION TRACE</span><div className="drawer-timeline"><TimelineItem title="Intent understood" detail="User request mapped to capabilities" done /><TimelineItem title="Policy evaluated" detail={awaitingApproval ? 'Waiting for explicit user approval' : 'Local project scope approved'} done={!awaitingApproval} active={awaitingApproval} /><TimelineItem title="Specialists delegated" detail={`${task.agents || 0} agents activated`} done={!isDraft && !awaitingApproval} active={isDraft} /><TimelineItem title="Execution + observation" detail="Waiting for downstream output" active={!isDraft && !awaitingApproval} /><TimelineItem title="Verification" detail="Independent quality checks" /></div></div><div className="drawer-section"><span className="panel-eyebrow">RESOURCES</span><div className="drawer-resource-list"><span><Bot size={14} /> Agents <b>{task.agents || 0}</b></span><span><Cpu size={14} /> Models <b>03</b></span><span><Wrench size={14} /> Tools <b>06</b></span><span><ShieldCheck size={14} /> Policy <b>{awaitingApproval ? 'hold' : 'pass'}</b></span></div></div><div className="drawer-footer">{awaitingApproval && <button className="primary-small" onClick={() => onApprove(task.id)}><ShieldCheck size={14} /> Approve & continue</button>}{!isDraft && !awaitingApproval && <button className="secondary-button" onClick={onPause}><Pause size={14} /> Pause run</button>}<button className={awaitingApproval ? 'secondary-button' : 'primary-small'} onClick={onClose}>{isDraft ? 'Open workflow builder' : awaitingApproval ? 'Keep paused' : 'Close trace'} <ArrowRight size={14} /></button></div></aside></div>
+  const paused = task.status === 'Paused'
+  const terminal = ['Completed', 'Cancelled', 'Failed'].includes(task.status)
+  const displayedStatus = isDraft ? 'Awaiting approval' : task.status
+  return <div className="drawer-backdrop" onClick={onClose}><aside className="task-drawer" onClick={(event) => event.stopPropagation()}><div className="drawer-head"><div><span className="panel-eyebrow">TASK TRACE / {task.id}</span><h2>{task.title}</h2></div><button className="icon-button" onClick={onClose}><X size={18} /></button></div><div className="drawer-state"><TaskStatus status={displayedStatus} /><span><Clock3 size={13} /> {paused ? 'checkpoint retained' : terminal ? 'run closed' : 'updated just now'}</span></div><div className="drawer-progress"><div><span>Overall progress</span><strong>{task.progress || 0}%</strong></div><div className="progress-track large"><span style={{ width: `${task.progress || 0}%` }} /></div></div><div className="drawer-section"><span className="panel-eyebrow">EXECUTION TRACE</span><div className="drawer-timeline"><TimelineItem title="Intent understood" detail="User request mapped to capabilities" done /><TimelineItem title="Policy evaluated" detail={awaitingApproval ? 'Waiting for explicit user approval' : 'Local project scope approved'} done={!awaitingApproval} active={awaitingApproval} /><TimelineItem title="Specialists delegated" detail={`${task.agents || 0} agents activated`} done={!isDraft && !awaitingApproval && !paused} active={isDraft} /><TimelineItem title="Execution + observation" detail={paused ? `Paused at ${task.runtimeTask?.checkpoint || 'safe checkpoint'}` : 'Waiting for downstream output'} active={!isDraft && !awaitingApproval && !terminal} /><TimelineItem title="Verification" detail="Independent quality checks" done={terminal && task.status === 'Completed'} /></div></div><div className="drawer-section"><span className="panel-eyebrow">RESOURCES</span><div className="drawer-resource-list"><span><Bot size={14} /> Agents <b>{task.agents || 0}</b></span><span><Cpu size={14} /> Models <b>03</b></span><span><Wrench size={14} /> Tools <b>{task.runtimeTask?.tools?.length || 6}</b></span><span><ShieldCheck size={14} /> Policy <b>{awaitingApproval ? 'hold' : task.status === 'Cancelled' ? 'closed' : 'pass'}</b></span></div></div><div className="drawer-footer">{awaitingApproval && <button className="primary-small" onClick={() => onApprove(task.id)}><ShieldCheck size={14} /> Approve & continue</button>}{!isDraft && !awaitingApproval && !terminal && !paused && <button className="secondary-button" onClick={() => onPause(task.id)}><Pause size={14} /> Pause run</button>}{paused && <button className="primary-small" onClick={() => onResume(task.id)}><Play size={14} /> Resume run</button>}{!isDraft && !awaitingApproval && !terminal && <button className="danger-button" onClick={() => onCancel(task.id)}><X size={14} /> Cancel run</button>}<button className={awaitingApproval ? 'secondary-button' : 'primary-small'} onClick={onClose}>{isDraft ? 'Open workflow builder' : awaitingApproval ? 'Keep paused' : 'Close trace'} <ArrowRight size={14} /></button></div></aside></div>
 }
 
 function TimelineItem({ title, detail, done, active }) {
@@ -862,7 +913,18 @@ function App() {
       <TaskDrawer
         task={selectedTask}
         onClose={() => setSelectedTask(null)}
-        onPause={() => setToast({ title: 'Run paused', detail: 'The task checkpoint is safe to resume.' })}
+        onPause={(taskId) => {
+          runtime.pauseTask(taskId)
+          setToast({ title: 'Run paused', detail: `${taskId} checkpoint retained safely.` })
+        }}
+        onResume={(taskId) => {
+          runtime.resumeTask(taskId)
+          setToast({ title: 'Run resumed', detail: `${taskId} is continuing from its last checkpoint.` })
+        }}
+        onCancel={(taskId) => {
+          runtime.cancelTask(taskId)
+          setToast({ title: 'Run cancelled', detail: `${taskId} resources were released.` })
+        }}
         onApprove={(taskId) => {
           runtime.approve(taskId)
           setToast({ title: 'Approval recorded', detail: `${taskId} is continuing through the execution graph.` })

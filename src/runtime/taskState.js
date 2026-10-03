@@ -55,6 +55,12 @@ export class TaskStateStore {
     return state
   }
 
+  cancel(taskId, reason = 'cancelled by user') {
+    const state = this.update(taskId, { status: 'Cancelled', cancelReason: reason, cancelledAt: new Date().toISOString(), checkpoint: 'cancelled' })
+    if (state) this.record(taskId, 'task.cancelled', { reason })
+    return state
+  }
+
   complete(taskId, { status = 'Completed', verification = 'approved', outputs = [] } = {}) {
     const state = this.update(taskId, { status, verification, outputs, completedAt: new Date().toISOString(), checkpoint: 'complete' })
     if (state) this.record(taskId, 'task.completed', { status, verification })
@@ -64,7 +70,7 @@ export class TaskStateStore {
   recover(taskId) {
     const state = this.tasks.get(taskId)
     if (!state) return null
-    return { taskId, checkpoint: state.checkpoint, status: state.status, resumable: !['Completed', 'Failed'].includes(state.status), dependencies: state.dependencies }
+    return { taskId, checkpoint: state.checkpoint, status: state.status, resumable: !['Completed', 'Failed', 'Cancelled'].includes(state.status), dependencies: state.dependencies }
   }
 
   get(taskId) {

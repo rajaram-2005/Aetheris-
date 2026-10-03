@@ -28,6 +28,33 @@ export class ExecutionLoop {
     return run
   }
 
+  pause(taskId, reason = 'paused by user') {
+    const run = this.runs.get(taskId)
+    if (!run) return null
+    run.status = 'paused'
+    run.pauseReason = reason
+    this.observability?.record(taskId, 'execution-loop.paused', { reason, current: run.current })
+    return run
+  }
+
+  resume(taskId) {
+    const run = this.runs.get(taskId)
+    if (!run) return null
+    run.status = 'running'
+    run.pauseReason = null
+    this.observability?.record(taskId, 'execution-loop.resumed', { current: run.current })
+    return run
+  }
+
+  cancel(taskId, reason = 'cancelled by user') {
+    const run = this.runs.get(taskId)
+    if (!run) return null
+    run.status = 'cancelled'
+    run.cancelReason = reason
+    this.observability?.record(taskId, 'execution-loop.cancelled', { reason, current: run.current })
+    return run
+  }
+
   fail(taskId, reason) {
     const run = this.runs.get(taskId)
     if (!run) return null
