@@ -24,5 +24,7 @@ Then open the Vite URL shown in the terminal.
 - Cross-platform device and system abstraction with permission levels and safe-control mode
 - Local-only / approved-online runtime toggle
 - Responsive layout for desktop and mobile
+- First implementation slice of sections 1–10: plane registry, conversation understanding, God Core orchestration, dependency-aware task graph, 56-agent registry, model routing/registry, and multimodal pipeline planning
+- In-browser runtime events for task creation, policy gating, agent/model delegation, verification, synthesis, and completion
 
-This is an interface prototype; model, storage, OS, and device adapters can be connected behind the control-plane contracts as the runtime is implemented.
+This is an interface and local runtime prototype; real model providers, storage, OS, and device adapters can be connected behind the existing control-plane contracts.

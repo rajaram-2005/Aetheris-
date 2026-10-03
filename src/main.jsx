@@ -68,6 +68,7 @@ import {
   Zap,
 } from 'lucide-react'
 import './styles.css'
+import { createAetherisRuntime } from './runtime/index.js'
 
 const NAV_ITEMS = [
   { id: 'command', label: 'Command center', icon: Command },
@@ -385,6 +386,17 @@ function QuickAction({ action, onClick }) {
   return <button className="quick-action" onClick={() => onClick(action.prompt)}><Icon size={15} /><span>{action.label}</span><Plus size={13} className="quick-plus" /></button>
 }
 
+function FoundationStrip({ runtimeSnapshot }) {
+  const foundations = runtimeSnapshot?.planes?.slice(0, 10) || []
+  return (
+    <div className="foundation-strip">
+      <div className="foundation-copy"><span className="foundation-live"><StatusDot tone="mint" pulse /> RUNTIME ONLINE</span><strong>First 10 foundations connected</strong></div>
+      <div className="foundation-pills">{foundations.map((plane) => <span key={plane.id} title={plane.role}><b>{plane.number}</b>{plane.name.replace(' plane', '')}</span>)}</div>
+      <span className="foundation-mode"><LockKeyhole size={12} /> local contracts</span>
+    </div>
+  )
+}
+
 function GraphNode({ icon: Icon, label, meta, status = 'done', tone = 'neutral' }) {
   return (
     <div className={`graph-node ${status} ${tone}`}>
@@ -473,7 +485,23 @@ function TaskRow({ task, onSelect }) {
   )
 }
 
-function Dashboard({ command, setCommand, runCommand, setActiveView, tasks, onSelectTask }) {
+function runtimeTaskToRow(task) {
+  const color = task.status === 'Completed' ? 'mint' : task.status === 'Awaiting approval' ? 'gold' : task.intent === 'creation' ? 'coral' : 'mint'
+  return {
+    id: task.id,
+    title: task.objective,
+    type: `${task.intent} orchestration`,
+    status: task.status,
+    progress: task.progress,
+    agents: task.agents,
+    eta: task.status === 'Completed' ? 'Complete' : 'live',
+    time: 'Now',
+    color,
+    runtimeTask: task,
+  }
+}
+
+function Dashboard({ command, setCommand, runCommand, setActiveView, tasks, onSelectTask, runtimeSnapshot }) {
   const [activityItems, setActivityItems] = useState(INITIAL_ACTIVITY)
   const handleSubmit = () => {
     const text = command.trim()
@@ -494,6 +522,7 @@ function Dashboard({ command, setCommand, runCommand, setActiveView, tasks, onSe
       />
 
       <CommandComposer value={command} setValue={setCommand} onSubmit={handleSubmit} onQuickAction={handleQuickAction} large />
+      <FoundationStrip runtimeSnapshot={runtimeSnapshot} />
       <div className="quick-actions"><span className="quick-label">TRY A COMMAND</span>{QUICK_ACTIONS.map((action) => <QuickAction key={action.label} action={action} onClick={handleQuickAction} />)}</div>
 
       <div className="stats-grid">
@@ -655,10 +684,11 @@ function DeviceCard({ device }) {
   return <div className="device-card"><div className={`device-icon ${device.tone}`}><Icon size={19} /></div><div className="device-copy"><strong>{device.name}</strong><span>{device.detail}</span></div><div className="device-status"><span><StatusDot tone={device.tone} />{device.status}</span><strong>{device.metric}</strong></div><MoreHorizontal size={16} className="muted-icon" /></div>
 }
 
-function TaskDrawer({ task, onClose, onPause }) {
+function TaskDrawer({ task, onClose, onPause, onApprove }) {
   if (!task) return null
   const isDraft = task.status === 'Draft'
-  return <div className="drawer-backdrop" onClick={onClose}><aside className="task-drawer" onClick={(event) => event.stopPropagation()}><div className="drawer-head"><div><span className="panel-eyebrow">TASK TRACE / {task.id}</span><h2>{task.title}</h2></div><button className="icon-button" onClick={onClose}><X size={18} /></button></div><div className="drawer-state"><TaskStatus status={isDraft ? 'Awaiting approval' : task.status} /><span><Clock3 size={13} /> updated just now</span></div><div className="drawer-progress"><div><span>Overall progress</span><strong>{task.progress || 0}%</strong></div><div className="progress-track large"><span style={{ width: `${task.progress || 0}%` }} /></div></div><div className="drawer-section"><span className="panel-eyebrow">EXECUTION TRACE</span><div className="drawer-timeline"><TimelineItem title="Intent understood" detail="User request mapped to capabilities" done /><TimelineItem title="Policy evaluated" detail="Local project scope approved" done /><TimelineItem title="Specialists delegated" detail={`${task.agents || 0} agents activated`} done={!isDraft} active={isDraft} /><TimelineItem title="Execution + observation" detail="Waiting for downstream output" active={!isDraft} /><TimelineItem title="Verification" detail="Independent quality checks" /></div></div><div className="drawer-section"><span className="panel-eyebrow">RESOURCES</span><div className="drawer-resource-list"><span><Bot size={14} /> Agents <b>{task.agents || 0}</b></span><span><Cpu size={14} /> Models <b>03</b></span><span><Wrench size={14} /> Tools <b>06</b></span><span><ShieldCheck size={14} /> Policy <b>pass</b></span></div></div><div className="drawer-footer">{!isDraft && <button className="secondary-button" onClick={onPause}><Pause size={14} /> Pause run</button>}<button className="primary-small" onClick={onClose}>{isDraft ? 'Open workflow builder' : 'Close trace'} <ArrowRight size={14} /></button></div></aside></div>
+  const awaitingApproval = task.status === 'Awaiting approval'
+  return <div className="drawer-backdrop" onClick={onClose}><aside className="task-drawer" onClick={(event) => event.stopPropagation()}><div className="drawer-head"><div><span className="panel-eyebrow">TASK TRACE / {task.id}</span><h2>{task.title}</h2></div><button className="icon-button" onClick={onClose}><X size={18} /></button></div><div className="drawer-state"><TaskStatus status={isDraft || awaitingApproval ? 'Awaiting approval' : task.status} /><span><Clock3 size={13} /> updated just now</span></div><div className="drawer-progress"><div><span>Overall progress</span><strong>{task.progress || 0}%</strong></div><div className="progress-track large"><span style={{ width: `${task.progress || 0}%` }} /></div></div><div className="drawer-section"><span className="panel-eyebrow">EXECUTION TRACE</span><div className="drawer-timeline"><TimelineItem title="Intent understood" detail="User request mapped to capabilities" done /><TimelineItem title="Policy evaluated" detail={awaitingApproval ? 'Waiting for explicit user approval' : 'Local project scope approved'} done={!awaitingApproval} active={awaitingApproval} /><TimelineItem title="Specialists delegated" detail={`${task.agents || 0} agents activated`} done={!isDraft && !awaitingApproval} active={isDraft} /><TimelineItem title="Execution + observation" detail="Waiting for downstream output" active={!isDraft && !awaitingApproval} /><TimelineItem title="Verification" detail="Independent quality checks" /></div></div><div className="drawer-section"><span className="panel-eyebrow">RESOURCES</span><div className="drawer-resource-list"><span><Bot size={14} /> Agents <b>{task.agents || 0}</b></span><span><Cpu size={14} /> Models <b>03</b></span><span><Wrench size={14} /> Tools <b>06</b></span><span><ShieldCheck size={14} /> Policy <b>{awaitingApproval ? 'hold' : 'pass'}</b></span></div></div><div className="drawer-footer">{awaitingApproval && <button className="primary-small" onClick={() => onApprove(task.id)}><ShieldCheck size={14} /> Approve & continue</button>}{!isDraft && !awaitingApproval && <button className="secondary-button" onClick={onPause}><Pause size={14} /> Pause run</button>}<button className={awaitingApproval ? 'secondary-button' : 'primary-small'} onClick={onClose}>{isDraft ? 'Open workflow builder' : awaitingApproval ? 'Keep paused' : 'Close trace'} <ArrowRight size={14} /></button></div></aside></div>
 }
 
 function TimelineItem({ title, detail, done, active }) {
@@ -666,20 +696,33 @@ function TimelineItem({ title, detail, done, active }) {
 }
 
 function App() {
+  const runtime = useMemo(() => createAetherisRuntime({ projectId: 'aetheris-core', projectName: 'Aetheris / Core' }), [])
   const [activeView, setActiveView] = useState('command')
   const [collapsed, setCollapsed] = useState(false)
   const [online, setOnline] = useState(false)
   const [command, setCommand] = useState('')
   const [tasks, setTasks] = useState(INITIAL_TASKS)
   const [selectedTask, setSelectedTask] = useState(null)
+  const [runtimeSnapshot, setRuntimeSnapshot] = useState(() => runtime.snapshot())
   const [toast, setToast] = useState(null)
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setTasks((current) => current.map((task) => task.status === 'Running' && task.progress < 96 ? { ...task, progress: task.progress + 1 } : task))
-    }, 3200)
-    return () => clearInterval(timer)
-  }, [])
+    return runtime.subscribe((event) => {
+      setRuntimeSnapshot(runtime.snapshot())
+      if (event.task) {
+        const row = runtimeTaskToRow(event.task)
+        setTasks((current) => {
+          const exists = current.some((task) => task.id === row.id)
+          return exists ? current.map((task) => task.id === row.id ? row : task) : [row, ...current]
+        })
+        setSelectedTask((current) => current?.id === row.id ? row : current)
+      }
+    })
+  }, [runtime])
+
+  useEffect(() => {
+    runtime.setOnline(online)
+  }, [online, runtime])
 
   useEffect(() => {
     if (!toast) return undefined
@@ -688,11 +731,11 @@ function App() {
   }, [toast])
 
   const runCommand = (text) => {
-    const nextId = `RUN-${1043 + tasks.length}`
-    const newTask = { id: nextId, title: text, type: 'Orchestration workflow', status: 'Running', progress: 8, agents: 1, eta: 'estimating', time: 'Now', color: 'mint' }
-    setTasks((current) => [newTask, ...current])
+    const runtimeTask = runtime.submit(text, { context: { source: 'command-center', network: online } })
+    const row = runtimeTaskToRow(runtimeTask)
+    setTasks((current) => current.some((task) => task.id === row.id) ? current : [row, ...current])
     setCommand('')
-    setToast({ title: 'Task accepted', detail: `${nextId} is being planned by God Core.` })
+    setToast({ title: runtimeTask.status === 'Awaiting approval' ? 'Approval required' : 'Task accepted', detail: `${runtimeTask.id} is being coordinated by God Core.` })
   }
 
   const openNewTask = () => {
@@ -710,7 +753,7 @@ function App() {
       case 'knowledge': return <KnowledgeView />
       case 'studio': return <StudioView />
       case 'devices': return <DevicesView />
-      default: return <Dashboard command={command} setCommand={setCommand} runCommand={runCommand} setActiveView={setActiveView} tasks={tasks} onSelectTask={openTask} />
+      default: return <Dashboard command={command} setCommand={setCommand} runCommand={runCommand} setActiveView={setActiveView} tasks={tasks} onSelectTask={openTask} runtimeSnapshot={runtimeSnapshot} />
     }
   }
 
@@ -721,7 +764,15 @@ function App() {
         <Topbar online={online} setOnline={setOnline} onNewTask={openNewTask} />
         <div className="page-scroll">{renderView()}</div>
       </main>
-      <TaskDrawer task={selectedTask} onClose={() => setSelectedTask(null)} onPause={() => setToast({ title: 'Run paused', detail: 'The task checkpoint is safe to resume.' })} />
+      <TaskDrawer
+        task={selectedTask}
+        onClose={() => setSelectedTask(null)}
+        onPause={() => setToast({ title: 'Run paused', detail: 'The task checkpoint is safe to resume.' })}
+        onApprove={(taskId) => {
+          runtime.approve(taskId)
+          setToast({ title: 'Approval recorded', detail: `${taskId} is continuing through the execution graph.` })
+        }}
+      />
       {toast && <div className="toast"><div className="toast-icon"><CircleCheck size={16} /></div><div><strong>{toast.title}</strong><span>{toast.detail}</span></div><button onClick={() => setToast(null)}><X size={14} /></button></div>}
     </div>
   )
