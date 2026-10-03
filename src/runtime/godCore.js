@@ -47,6 +47,7 @@ import { AiosEnvironment } from './aiosEnvironment.js'
 import { ModelKnowledgeFabric } from './modelKnowledgeFabric.js'
 import { OfflineMemoryJournal } from './offlineMemory.js'
 import { OfflineMediaEngine } from './offlineMedia.js'
+import { McpFabric } from './mcpFabric.js'
 
 export class GodCore {
   constructor({ projectId = 'aetheris-core', projectName = 'Aetheris / Core', online = false, emit = () => {} } = {}) {
@@ -99,6 +100,45 @@ export class GodCore {
     this.api = new UniversalApi({ runtime: this })
     this.tasks = new Map()
     this.taskSequence = 1043
+    this.mcp = new McpFabric({ security: this.security, network: this.network, handlers: {
+      'aetheris.core.plan_task': (args) => this.commandCatalog.resolve(args.request || args.text || ''),
+      'aetheris.core.observe_task': (args) => this.getTask(args.taskId),
+      'aetheris.core.resume_task': (args) => this.taskState.recover(args.taskId),
+      'aetheris.knowledge.search': (args) => this.knowledge.search(args.query || '', args.options || {}),
+      'aetheris.knowledge.ingest': (args) => this.knowledge.ingest(args.source || args),
+      'aetheris.memory.retrieve': (args) => this.memory.retrieve(args.query || '', args.options || {}),
+      'aetheris.memory.update_offline': (args) => { const update = this.offlineMemory.enqueue(args); return { update, flush: this.offlineMemory.flush({ localOnly: true }) } },
+      'aetheris.models.list': () => MODEL_DEFINITIONS,
+      'aetheris.models.route': (args) => this.router.route(args.understanding || { intent: 'general', complexity: 'low', modalities: ['text'] }, { output: 'default' }),
+      'aetheris.media.plan': (args) => this.offlineMedia.plan(args),
+      'aetheris.media.render': (args) => this.offlineMedia.render(args.plan || args),
+      'aetheris.files.search': (args) => this.files.search(args.query || '', args.options || {}),
+      'aetheris.files.analyze': (args) => this.files.analyze(args.path),
+      'aetheris.files.operate': (args, context) => this.files.execute(args.action, args.path, { ...context, approved: context.approved }),
+      'aetheris.terminal.plan': (args) => this.terminal.plan(args.command || '', args.options || {}),
+      'aetheris.terminal.execute': (args) => this.terminal.execute(args.command || '', args.options || {}),
+      'aetheris.browser.navigate': (args) => this.browser.navigate(args.url || '', args.options || {}),
+      'aetheris.browser.act': (args) => this.browser.act(args.sessionId, args.action, args.target, args.options || {}),
+      'aetheris.apps.resolve': (args) => this.applications.resolve(args.query || ''),
+      'aetheris.apps.launch': (args) => this.applications.launch(args.query || '', args.options || {}),
+      'aetheris.workflow.define': (args) => this.workflow.define(args.workflow || args),
+      'aetheris.workflow.run': (args) => this.workflow.start(args.workflowId, args.context || {}),
+      'aetheris.agents.form_swarm': (args) => this.swarm.compose(args),
+      'aetheris.science.plan': (args) => this.scientific.plan(args.question || '', args.options || {}),
+      'aetheris.education.plan': (args) => this.education.planLesson(args.learnerId || 'local-learner', args.topic || '', args.options || {}),
+      'aetheris.research.run': (args) => this.research.run(this.research.plan(args.question || '', args.options || {})),
+      'aetheris.verification.evaluate': (args) => { const task = this.tasks.get(args.taskId); return task ? this.verification.evaluate(task, args.options || {}) : { status: 'missing-task' } },
+      'aetheris.safety.assess': (args) => this.safety.evaluate(args.decision || {}, args.context || {}),
+      'aetheris.hardware.snapshot': () => this.hardware.snapshot(),
+      'aetheris.industrial.read_telemetry': (args) => this.industrial.readTelemetry(args.deviceId || 'lab-gateway'),
+      'aetheris.industrial.plan_action': (args) => this.industrial.planAction(args.deviceId || 'converter-plc', args.action || 'validate', { simulation: true, authorized: false }),
+      'aetheris.twin.simulate': (args) => this.digitalTwin.simulate(args.twinId || 'project-atlas-twin', args.scenario || {}),
+      'aetheris.data.query': (args) => this.data.query(args.table || 'tasks', args.predicate || (() => true)),
+      'aetheris.plugins.discover': (args) => this.plugins.resolve(args.capability || ''),
+      'aetheris.plugins.register': (args) => this.plugins.register(args.plugin || args),
+      'aetheris.training.plan': (args) => this.training.plan(args),
+      'aetheris.observability.trace': (args) => this.observability.get(args.taskId),
+    }})
   }
 
   setOnline(online) {
@@ -116,6 +156,8 @@ export class GodCore {
     const knowledgeEvidence = this.knowledge.search(understanding.text)
     const modelKnowledgePlan = this.modelKnowledge.plan({ query: understanding.text, offline: !this.network.online })
     const offlineMemoryPlan = this.offlineMemory.status()
+    const mcpPlan = this.mcp.planForIntent(understanding)
+    const mcpHandshake = this.mcp.call('aetheris.core.plan_task', { request: understanding.text }, { approved: true })
     const context = this.conversation.loadContext({
       ...options.context,
       memory: memoryContext,
@@ -209,6 +251,8 @@ export class GodCore {
       knowledgeEvidence,
       modelKnowledgePlan,
       offlineMemoryPlan,
+      mcpPlan,
+      mcpHandshake,
       tools: resolveTools(routes, understanding, toolPlan),
     }
     const graph = createExecutionGraph(plan)
@@ -375,6 +419,7 @@ export class GodCore {
       ['extensibility', Boolean(this.plugins && this.developer && this.api)],
       ['model-knowledge', Boolean(this.modelKnowledge && this.offlineMemory)],
       ['offline-media', Boolean(this.offlineMedia)],
+      ['mcp-fabric', Boolean(this.mcp && this.mcp.tools.size > 0)],
     ].map(([id, ready]) => ({ id, ready }))
     return { status: checks.every((check) => check.ready) ? 'healthy' : 'degraded', checks, localFirst: !snapshot.online, connectedSections: 62, phaseGroups: 6, timestamp: new Date().toISOString() }
   }
@@ -429,6 +474,7 @@ export class GodCore {
       modelKnowledge: this.modelKnowledge.snapshot(),
       offlineMemory: this.offlineMemory.status(),
       offlineMedia: this.offlineMedia.snapshot(),
+      mcp: this.mcp.snapshot(),
       knowledge: this.knowledge.snapshot(),
       memory: this.memory.snapshot(),
       learning: this.metaLearning.snapshot(),

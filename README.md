@@ -36,4 +36,6 @@ The runtime also includes a model-knowledge consolidation fabric: local model me
 
 The Creative Studio includes local-only image, video, audio, 3D, and document pipeline adapters with real local preview assets. Image previews are stored under `public/media`; audio includes an offline WAV preview. Full local inference still depends on the installed model runtimes and hardware adapters.
 
+The MCP toolbox exposes 37 permissioned tools across 23 in-process servers covering every plane: chat, memory, knowledge, models, media, files, terminal, browser, applications, workflows, agents, science, education, research, verification, safety, hardware, industrial telemetry, digital twins, plugins, training, data, and observability. Every invocation returns a structured audit envelope and respects local-only, sandbox, network, device, and industrial policy.
+
 This is an interface and local runtime prototype; real model providers, storage, OS, and device adapters can be connected behind the existing control-plane contracts.

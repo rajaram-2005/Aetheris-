@@ -66,6 +66,12 @@ export function createAetherisRuntime(options = {}) {
     renderOfflineMedia(plan) {
       return godCore.offlineMedia.render(plan)
     },
+    discoverMcp(options = {}) {
+      return godCore.mcp.discover(options)
+    },
+    callMcp(name, args = {}, context = {}) {
+      return godCore.mcp.call(name, args, context)
+    },
     getTrace(taskId) {
       return godCore.observability.get(taskId)
     },
@@ -129,3 +135,4 @@ export * from './aiosEnvironment.js'
 export * from './modelKnowledgeFabric.js'
 export * from './offlineMemory.js'
 export * from './offlineMedia.js'
+export * from './mcpFabric.js'

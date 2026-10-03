@@ -495,6 +495,24 @@ kbd { font-family: var(--font-mono); border: 1px solid var(--line-strong); paddi
 .model-note-panel p { max-width: 310px; margin: 12px 0 12px; color: #c6ceca; font-size: 14px; line-height: 1.55; letter-spacing: -.02em; }
 .model-note-panel span { color: #8e86c8; font-family: var(--font-mono); font-size: 8px; }
 
+/* MCP toolbox */
+.mcp-health-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 9px; margin-bottom: 17px; }
+.mcp-health-card { display: flex; align-items: center; gap: 9px; min-height: 71px; padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: rgba(14,19,22,.8); }
+.mcp-health-icon { width: 31px; height: 31px; display: grid; place-items: center; flex: 0 0 auto; border-radius: 7px; }
+.mcp-health-icon.mint { color: var(--mint); background: var(--mint-dim); }.mcp-health-icon.violet { color: var(--violet); background: var(--violet-dim); }.mcp-health-icon.gold { color: var(--gold); background: var(--gold-dim); }.mcp-health-icon.blue { color: var(--blue); background: var(--blue-dim); }
+.mcp-health-card > div:nth-child(2) { min-width: 0; display: grid; gap: 3px; }
+.mcp-health-card span { color: #71847e; font-family: var(--font-mono); font-size: 7px; }.mcp-health-card strong { font-size: 13px; }.mcp-health-card small { color: #677b75; font-size: 8px; }
+.mcp-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 13px; }
+.mcp-mode-toggle { height: 33px; display: inline-flex; align-items: center; gap: 7px; padding: 0 10px; color: #80948d; border: 1px solid var(--line); border-radius: 6px; background: rgba(16,23,25,.72); font-family: var(--font-mono); font-size: 8px; }
+.mcp-mode-toggle.active { color: var(--mint); border-color: rgba(181,245,216,.24); background: var(--mint-dim); }
+.mcp-notice { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; padding: 9px 11px; border: 1px solid rgba(181,245,216,.18); border-radius: 7px; color: var(--mint); background: rgba(115,223,180,.05); font-size: 9px; }
+.mcp-notice.blocked { color: var(--gold); border-color: rgba(231,204,142,.2); background: rgba(201,167,86,.05); }.mcp-notice span { flex: 1; }.mcp-notice button { display: grid; place-items: center; border: 0; background: none; color: inherit; }
+.mcp-panel { overflow: hidden; }.mcp-tool-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 14px; }
+.mcp-tool-card { min-height: 137px; display: flex; flex-direction: column; padding: 11px; border: 1px solid var(--line); border-radius: 8px; background: rgba(18,26,28,.7); transition: border-color .18s, transform .18s; }
+.mcp-tool-card:hover { border-color: rgba(181,245,216,.24); transform: translateY(-1px); }
+.mcp-tool-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 13px; }.mcp-tool-server { color: #789089; font-family: var(--font-mono); font-size: 7px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }.mcp-level { height: 17px; display: inline-flex; align-items: center; padding: 0 5px; border-radius: 3px; font-family: var(--font-mono); font-size: 7px; }.level-0, .level-1 { color: var(--mint); background: var(--mint-dim); }.level-2, .level-3 { color: var(--violet); background: var(--violet-dim); }.level-4, .level-5 { color: var(--gold); background: var(--gold-dim); }.level-6, .level-7 { color: var(--coral); background: var(--coral-dim); }
+.mcp-tool-card > strong { font-size: 10px; }.mcp-tool-card > p { min-height: 27px; margin: 5px 0 12px; color: #72857e; font-size: 8px; line-height: 1.55; }.mcp-tool-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-top: 8px; margin-top: auto; border-top: 1px solid rgba(223,244,239,.06); color: #62766f; font-family: var(--font-mono); font-size: 7px; }.mcp-tool-foot button { display: inline-flex; align-items: center; gap: 4px; padding: 0; border: 0; background: none; color: var(--mint-strong); font-family: var(--font-mono); font-size: 7px; }
+
 /* Knowledge view */
 .knowledge-hero { display: flex; align-items: center; justify-content: space-between; min-height: 216px; gap: 20px; overflow: hidden; border: 1px solid rgba(181,245,216,.14); border-radius: 11px; padding: 22px 28px; background: linear-gradient(108deg, rgba(115,223,180,.09), rgba(14,19,22,.8) 60%, rgba(148,132,255,.07)); margin-bottom: 14px; }
 .knowledge-hero-copy { max-width: 550px; }
@@ -691,6 +709,8 @@ kbd { font-family: var(--font-mono); border: 1px solid var(--line-strong); paddi
   .workflow-grid { grid-template-columns: repeat(2, 1fr); }
   .agent-grid { grid-template-columns: repeat(3, 1fr); }
   .model-health-grid { grid-template-columns: repeat(2, 1fr); }
+  .mcp-health-grid { grid-template-columns: repeat(2, 1fr); }
+  .mcp-tool-grid { grid-template-columns: repeat(2, 1fr); }
   .memory-fabric-grid { grid-template-columns: repeat(2, 1fr); }
   .device-grid { grid-template-columns: repeat(2, 1fr); }
 }
@@ -749,7 +769,7 @@ kbd { font-family: var(--font-mono); border: 1px solid var(--line-strong); paddi
   .final-phase-pills { order: 3; flex-basis: 100%; overflow-x: auto; padding-bottom: 2px; }
   .quick-actions { padding-bottom: 19px; }
   .quick-label { width: 100%; }
-  .stats-grid, .workflow-grid, .model-health-grid, .memory-fabric-grid, .device-grid, .agent-grid, .asset-grid { grid-template-columns: 1fr; }
+  .stats-grid, .workflow-grid, .model-health-grid, .mcp-health-grid, .mcp-tool-grid, .memory-fabric-grid, .device-grid, .agent-grid, .asset-grid { grid-template-columns: 1fr; }
   .stat-card { min-height: 100px; }
   .panel-header { padding-inline: 13px; }
   .execution-graph { padding-inline: 10px; overflow-x: auto; }
@@ -769,7 +789,7 @@ kbd { font-family: var(--font-mono); border: 1px solid var(--line-strong); paddi
   .run-summary-copy > span:last-child { max-width: 230px; }
   .fabric-flow { overflow-x: auto; }
   .memory-stats { grid-template-columns: repeat(2, 1fr); }
-  .workflow-toolbar, .agent-toolbar { align-items: stretch; flex-direction: column; }
+  .workflow-toolbar, .agent-toolbar, .mcp-toolbar { align-items: stretch; flex-direction: column; }
   .search-box { width: 100%; }
   .toolbar-actions { justify-content: flex-end; }
   .agent-overview { display: block; padding: 18px; }

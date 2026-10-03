@@ -75,6 +75,7 @@ const NAV_ITEMS = [
   { id: 'workflows', label: 'Workflows', icon: Workflow, count: '04' },
   { id: 'agents', label: 'Agent fabric', icon: Bot, count: '56' },
   { id: 'models', label: 'Model registry', icon: Cpu },
+  { id: 'mcp', label: 'MCP toolbox', icon: Cable, count: '37' },
   { id: 'knowledge', label: 'Knowledge', icon: BookOpen },
   { id: 'studio', label: 'Creative studio', icon: Sparkles },
   { id: 'devices', label: 'Devices & system', icon: Monitor },
@@ -693,6 +694,27 @@ function Factor({ label, value, width, tone }) {
   return <div className="factor"><div><span>{label}</span><strong>{value}</strong></div><div className="factor-track"><span className={tone} style={{ width }} /></div></div>
 }
 
+function McpView({ runtime, runtimeSnapshot }) {
+  const [query, setQuery] = useState('')
+  const [offlineOnly, setOfflineOnly] = useState(true)
+  const [notice, setNotice] = useState(null)
+  const tools = runtime.discoverMcp({ query, offlineOnly })
+  const mcp = runtimeSnapshot?.mcp || {}
+  const callTool = (tool) => {
+    const result = runtime.callMcp(tool.name, {}, { approved: tool.level <= 3 })
+    setNotice({ name: tool.title, status: result.status, reason: result.reason || 'adapter response recorded' })
+  }
+  return (
+    <div className="page-content">
+      <PageHeader eyebrow="TOOL PLANE / MCP FABRIC" title={<>Every capability, <em>callable.</em></>} description="Discover, permission, invoke, and observe MCP tools across every Aetheris plane without leaving the control surface." action={{ label: 'Register server', icon: Plus }} />
+      <div className="mcp-health-grid"><div className="mcp-health-card"><div className="mcp-health-icon mint"><Cable size={18} /></div><div><span>CONNECTED SERVERS</span><strong>{mcp.connectedServers || 0} / {mcp.servers || 0}</strong><small>in-process adapters</small></div></div><div className="mcp-health-card"><div className="mcp-health-icon violet"><Wrench size={18} /></div><div><span>DISCOVERED TOOLS</span><strong>{mcp.tools || 0}</strong><small>across every plane</small></div></div><div className="mcp-health-card"><div className="mcp-health-icon gold"><LockKeyhole size={18} /></div><div><span>OFFLINE AVAILABLE</span><strong>{mcp.offlineAvailable || 0}</strong><small>no network required</small></div></div><div className="mcp-health-card"><div className="mcp-health-icon blue"><Activity size={18} /></div><div><span>AUDIT EVENTS</span><strong>{mcp.auditEvents || 0}</strong><small>JSON-RPC envelopes</small></div></div></div>
+      <div className="mcp-toolbar"><div className="search-box wide"><Search size={16} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search MCP tools across every plane" /></div><button className={`mcp-mode-toggle ${offlineOnly ? 'active' : ''}`} onClick={() => setOfflineOnly(!offlineOnly)}><LockKeyhole size={14} /> {offlineOnly ? 'LOCAL ONLY' : 'ALL SERVERS'}</button></div>
+      {notice && <div className={`mcp-notice ${notice.status === 'blocked' ? 'blocked' : ''}`}><CircleCheck size={15} /><span><strong>{notice.name}</strong> · {notice.status} · {notice.reason}</span><button onClick={() => setNotice(null)}><X size={14} /></button></div>}
+      <section className="panel mcp-panel"><PanelHeader eyebrow={`DISCOVERY / ${tools.length} MATCHES`} title="MCP toolbox" action="Open protocol spec" /><div className="mcp-tool-grid">{tools.map((tool) => <div className="mcp-tool-card" key={tool.name}><div className="mcp-tool-head"><span className="mcp-tool-server">{tool.server}</span><span className={`mcp-level level-${tool.level}`}>L{tool.level}</span></div><strong>{tool.title}</strong><p>{tool.description}</p><div className="mcp-tool-foot"><span>{tool.plane}</span><button onClick={() => callTool(tool)}>Call tool <ArrowRight size={12} /></button></div></div>)}</div></section>
+    </div>
+  )
+}
+
 function KnowledgeView({ runtimeSnapshot }) {
   const modelKnowledge = runtimeSnapshot?.modelKnowledge || {}
   const offlineMemory = runtimeSnapshot?.offlineMemory || {}
@@ -822,6 +844,7 @@ function App() {
       case 'workflows': return <WorkflowsView setActiveView={setActiveView} openTask={openTask} />
       case 'agents': return <AgentsView />
       case 'models': return <ModelsView />
+      case 'mcp': return <McpView runtime={runtime} runtimeSnapshot={runtimeSnapshot} />
       case 'knowledge': return <KnowledgeView runtimeSnapshot={runtimeSnapshot} />
       case 'studio': return <StudioView runtime={runtime} runtimeSnapshot={runtimeSnapshot} />
       case 'devices': return <DevicesView />
