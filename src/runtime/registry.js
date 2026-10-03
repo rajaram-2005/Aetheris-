@@ -55,6 +55,19 @@ export const MODE_PHASES = [
   { id: 'observability', number: '40', name: 'Observability', role: 'Trace without private chain-of-thought' },
 ]
 
+export const PLATFORM_PHASES = [
+  { id: 'resource-manager', number: '41', name: 'Resource manager', role: 'CPU, GPU, NPU, RAM, power, concurrency' },
+  { id: 'offline-mode', number: '42', name: 'Offline mode', role: 'Local models, memory, tools, knowledge' },
+  { id: 'online-mode', number: '43', name: 'Online mode', role: 'Approved search, APIs, remote models' },
+  { id: 'plugin-mcp-fabric', number: '44', name: 'Plugin / MCP fabric', role: 'MCP, API, SDK capability registry' },
+  { id: 'developer-platform', number: '45', name: 'Developer platform', role: 'Agent, tool, model, memory, workflow SDKs' },
+  { id: 'universal-api', number: '46', name: 'Universal API', role: 'Stable capability endpoints' },
+  { id: 'cross-platform-runtime', number: '47', name: 'Cross-platform runtime', role: 'Hardware and operating-system adapters' },
+  { id: 'data-layer', number: '48', name: 'Data layer', role: 'Relational, vector, graph, file, object stores' },
+  { id: 'training-fabric', number: '49', name: 'Training fabric', role: 'Data to safe model deployment' },
+  { id: 'continual-improvement', number: '50', name: 'Continual improvement', role: 'Knowledge and strategy, not automatic weights' },
+]
+
 export const AGENT_GROUPS = [
   { id: 'intelligence', name: 'Intelligence', agents: ['Reasoning', 'Planning', 'Problem Solving', 'Strategy', 'Critique', 'Verification', 'Meta-Learning'] },
   { id: 'software', name: 'Software & digital engineering', agents: ['Software Architecture', 'Programming', 'Debugging', 'Testing', 'DevOps', 'Database', 'Cybersecurity'] },

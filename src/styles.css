@@ -220,6 +220,13 @@ kbd { font-family: var(--font-mono); border: 1px solid var(--line-strong); paddi
 .mode-phase-pills { display: flex; align-items: center; gap: 5px; min-width: 0; overflow: hidden; flex: 1; }
 .mode-phase-pills span { display: inline-flex; align-items: center; gap: 4px; height: 21px; padding: 0 6px; white-space: nowrap; border: 1px solid rgba(98,189,232,.1); border-radius: 4px; color: #718895; background: rgba(98,189,232,.025); font-family: var(--font-mono); font-size: 7px; }
 .mode-phase-pills span b { color: var(--blue); font-weight: 400; }
+.platform-phase-strip { min-height: 38px; display: flex; align-items: center; gap: 15px; padding: 6px 11px; border: 1px solid rgba(242, 165, 143, .12); border-radius: 7px; background: rgba(233, 128, 102, .035); overflow: hidden; }
+.platform-phase-copy { display: grid; gap: 3px; min-width: 205px; flex: 0 0 auto; }
+.platform-phase-copy span { color: var(--coral); font-family: var(--font-mono); font-size: 7px; letter-spacing: .08em; }
+.platform-phase-copy strong { color: #b99b92; font-size: 8px; font-weight: 500; white-space: nowrap; }
+.platform-phase-pills { display: flex; align-items: center; gap: 5px; min-width: 0; overflow: hidden; flex: 1; }
+.platform-phase-pills span { display: inline-flex; align-items: center; gap: 4px; height: 21px; padding: 0 6px; white-space: nowrap; border: 1px solid rgba(242,165,143,.1); border-radius: 4px; color: #8f7870; background: rgba(242,165,143,.025); font-family: var(--font-mono); font-size: 7px; }
+.platform-phase-pills span b { color: var(--coral); font-weight: 400; }
 .quick-actions {  display: flex; align-items: center; flex-wrap: wrap; gap: 7px; padding: 13px 2px 27px; }
 .quick-label { font-size: 8px; color: #596a66; margin-right: 4px; }
 .quick-action { display: inline-flex; align-items: center; gap: 7px; height: 27px; border-radius: 5px; border: 1px solid var(--line); background: rgba(18,25,27,.74); color: #9eafaa; font-size: 9px; padding: 0 8px; transition: all .18s; }
@@ -692,6 +699,9 @@ kbd { font-family: var(--font-mono); border: 1px solid var(--line-strong); paddi
   .mode-phase-strip { align-items: flex-start; flex-wrap: wrap; gap: 7px; padding: 9px 10px; }
   .mode-phase-copy { min-width: 0; flex: 1 1 100%; }
   .mode-phase-pills { order: 3; flex-basis: 100%; overflow-x: auto; padding-bottom: 2px; }
+  .platform-phase-strip { align-items: flex-start; flex-wrap: wrap; gap: 7px; padding: 9px 10px; }
+  .platform-phase-copy { min-width: 0; flex: 1 1 100%; }
+  .platform-phase-pills { order: 3; flex-basis: 100%; overflow-x: auto; padding-bottom: 2px; }
   .quick-actions { padding-bottom: 19px; }
   .quick-label { width: 100%; }
   .stats-grid, .workflow-grid, .model-health-grid, .memory-fabric-grid, .device-grid, .agent-grid, .asset-grid { grid-template-columns: 1fr; }

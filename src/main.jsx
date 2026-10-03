@@ -428,6 +428,16 @@ function ModePhaseStrip({ runtimeSnapshot }) {
   )
 }
 
+function PlatformPhaseStrip({ runtimeSnapshot }) {
+  const phases = runtimeSnapshot?.platformPhases || []
+  return (
+    <div className="platform-phase-strip">
+      <div className="platform-phase-copy"><span>41–50 / PLATFORM PLANE</span><strong>Scale, extend, expose, improve</strong></div>
+      <div className="platform-phase-pills">{phases.map((phase) => <span key={phase.id} title={phase.role}><b>{phase.number}</b>{phase.name}</span>)}</div>
+    </div>
+  )
+}
+
 function GraphNode({ icon: Icon, label, meta, status = 'done', tone = 'neutral' }) {
   return (
     <div className={`graph-node ${status} ${tone}`}>
@@ -557,6 +567,7 @@ function Dashboard({ command, setCommand, runCommand, setActiveView, tasks, onSe
       <ArchitecturePhaseStrip runtimeSnapshot={runtimeSnapshot} />
       <ControlPhaseStrip runtimeSnapshot={runtimeSnapshot} />
       <ModePhaseStrip runtimeSnapshot={runtimeSnapshot} />
+      <PlatformPhaseStrip runtimeSnapshot={runtimeSnapshot} />
       <div className="quick-actions"><span className="quick-label">TRY A COMMAND</span>{QUICK_ACTIONS.map((action) => <QuickAction key={action.label} action={action} onClick={handleQuickAction} />)}</div>
 
       <div className="stats-grid">

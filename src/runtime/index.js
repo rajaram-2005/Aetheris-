@@ -17,6 +17,12 @@ export function createAetherisRuntime(options = {}) {
     setOnline(online) {
       godCore.setOnline(online)
     },
+    request(path, options = {}) {
+      return godCore.api.request(path, options)
+    },
+    apiSpec() {
+      return godCore.api.openApi()
+    },
     snapshot() {
       return godCore.snapshot()
     },
@@ -55,3 +61,11 @@ export * from './researchMode.js'
 export * from './verificationEngine.js'
 export * from './selfHealing.js'
 export * from './observability.js'
+export * from './resourceManager.js'
+export * from './networkMode.js'
+export * from './pluginFabric.js'
+export * from './developerPlatform.js'
+export * from './universalApi.js'
+export * from './dataLayer.js'
+export * from './trainingFabric.js'
+export * from './continualImprovement.js'

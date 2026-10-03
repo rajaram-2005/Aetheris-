@@ -2,7 +2,7 @@ import { ConversationPlane } from './conversation.js'
 import { createMultimodalPlan } from './multimodal.js'
 import { ModelRouter } from './router.js'
 import { createExecutionGraph, NODE_STATUS } from './taskGraph.js'
-import { PLANE_DEFINITIONS, ARCHITECTURE_PHASES, CONTROL_PHASES, MODE_PHASES, MODEL_DEFINITIONS } from './registry.js'
+import { PLANE_DEFINITIONS, ARCHITECTURE_PHASES, CONTROL_PHASES, MODE_PHASES, PLATFORM_PHASES, MODEL_DEFINITIONS } from './registry.js'
 import { KnowledgeFabric } from './knowledgeFabric.js'
 import { MemoryFabric } from './memoryFabric.js'
 import { MetaLearningEngine } from './metaLearning.js'
@@ -28,6 +28,14 @@ import { ResearchMode } from './researchMode.js'
 import { VerificationEngine } from './verificationEngine.js'
 import { SelfHealingWorkflow } from './selfHealing.js'
 import { ObservabilityLedger } from './observability.js'
+import { ResourceManager } from './resourceManager.js'
+import { NetworkMode } from './networkMode.js'
+import { PluginFabric } from './pluginFabric.js'
+import { DeveloperPlatform } from './developerPlatform.js'
+import { UniversalApi } from './universalApi.js'
+import { DataLayer } from './dataLayer.js'
+import { TrainingFabric } from './trainingFabric.js'
+import { ContinualImprovement } from './continualImprovement.js'
 
 export class GodCore {
   constructor({ projectId = 'aetheris-core', projectName = 'Aetheris / Core', online = false, emit = () => {} } = {}) {
@@ -55,10 +63,18 @@ export class GodCore {
     this.verification = new VerificationEngine()
     this.selfHealing = new SelfHealingWorkflow({ sandbox: this.sandbox, verification: this.verification })
     this.observability = new ObservabilityLedger()
+    this.resourceManager = new ResourceManager()
+    this.network = new NetworkMode({ online })
+    this.plugins = new PluginFabric({ network: this.network, security: this.security })
+    this.developer = new DeveloperPlatform({ plugins: this.plugins })
+    this.data = new DataLayer()
+    this.training = new TrainingFabric()
+    this.continual = new ContinualImprovement({ memory: this.memory, knowledge: this.knowledge })
     this.workflow = new WorkflowEngine()
     this.swarm = new AgentSwarm({ emit })
     this.conversation = new ConversationPlane({ projectId, projectName })
     this.router = new ModelRouter({ online })
+    this.api = new UniversalApi({ runtime: this })
     this.tasks = new Map()
     this.taskSequence = 1043
   }
@@ -67,6 +83,8 @@ export class GodCore {
     this.router.setOnline(online)
     this.tools.setOnline(online)
     this.security.setOnline(online)
+    this.network.setOnline(online)
+    if (online) this.network.approveService('external-sources')
     this.emit({ type: 'runtime.network', online: this.router.online })
   }
 
@@ -101,6 +119,13 @@ export class GodCore {
     const researchPlan = understanding.intent === 'research' ? this.research.plan(understanding.text, { online: this.security.online }) : null
     const verificationPlan = this.verification.plan({ plan: { knowledgeEvidence } })
     const selfHealingPlan = { onFailure: ['diagnose', 'propose fix', 'sandbox', 'test', 'verify'], retries: 2, concealFailure: false }
+    const resourcePlan = this.resourceManager.plan({ taskId: `RUN-${this.taskSequence}`, complexity: understanding.complexity, modelGb: Math.max(...routes.map((route) => route.model.sizeGb || 0), 0), agents: routes.length, modality: multimodal.output })
+    const resourceAllocation = this.resourceManager.allocate(resourcePlan)
+    const networkPlan = understanding.risk.networkRequested ? this.network.request('external-sources', { purpose: understanding.text, approved: options.approved }) : null
+    const pluginPlan = [...new Set(routes.flatMap((route) => route.agent.tools))].flatMap((capability) => this.plugins.resolve(capability).slice(0, 1))
+    const dataRefs = { relational: `tasks/pending-${this.taskSequence}`, vector: knowledgeEvidence.map((item) => item.chunkId), graph: knowledgeEvidence.map((item) => item.sourceId) }
+    const trainingPlan = /train|fine[- ]tune|benchmark|dataset/i.test(understanding.text) ? this.training.plan({ dataset: understanding.text, objective: understanding.intent, privacy: this.network.online ? 'local-first' : 'local-only' }) : null
+    const improvementPlan = { outcome: 'evaluate after verification', usefulInformation: true, strategyMemory: true, automaticWeightUpdate: false }
     const workflowPlan = this.workflow.define({
       id: `workflow-${this.taskSequence}`,
       name: `${understanding.intent} orchestration`,
@@ -133,6 +158,12 @@ export class GodCore {
       researchPlan,
       verificationPlan,
       selfHealingPlan,
+      resourcePlan: resourceAllocation,
+      networkPlan,
+      pluginPlan,
+      dataRefs,
+      trainingPlan,
+      improvementPlan,
       workflowPlan,
       swarm,
       knowledgeEvidence,
@@ -159,6 +190,12 @@ export class GodCore {
       checkpoint: 'intent',
     }
 
+    task.plan.dataRefs.relational = `tasks/${task.id}`
+    this.data.put('tasks', task.id, { id: task.id, objective: task.objective, intent: task.intent, status: task.status })
+    knowledgeEvidence.forEach((evidence) => {
+      this.data.embed(evidence.chunkId, [evidence.score], { sourceId: evidence.sourceId })
+      this.data.link(task.id, evidence.sourceId, 'retrieves')
+    })
     this.tasks.set(task.id, task)
     this.observability.startTask(task)
     this.emitTask(task, 'task.created')
@@ -238,6 +275,8 @@ export class GodCore {
           this.memory.rememberTask(task, evaluation)
           this.metaLearning.updateStrategy(task, evaluation)
           this.selfHealing.record(task.id, { status: 'healthy', test: verification.passed ? 'passed' : 'needs-review' })
+          const improvement = this.continual.record(task, { useful: verification.passed, strategy: true, feedback: 'automated verification result' })
+          this.resourceManager.release(task.id)
           this.sandbox.terminate(task.sandboxId)
           this.swarm.disband(task.swarmId)
           this.observability.completeTask(task.id, { status: 'Completed', verification: verification.status })
@@ -245,6 +284,7 @@ export class GodCore {
           this.conversation.addMessage('assistant', responseFor(task), { taskId: task.id, evaluation, verification })
           task.evaluation = evaluation
           task.verification = verification
+          task.improvement = improvement
         }
         this.addActivity(task, activityTitle(node, 'completed'), node.kind === 'agent' ? `${node.label} · ${node.detail}` : node.detail, activityTone(node.kind))
         this.emitTask(task, nodeId === 'respond' ? 'task.completed' : 'task.node-completed')
@@ -266,6 +306,7 @@ export class GodCore {
       phases: ARCHITECTURE_PHASES,
       controlPhases: CONTROL_PHASES,
       modePhases: MODE_PHASES,
+      platformPhases: PLATFORM_PHASES,
       agentsOnline: 42,
       agentCount: 56,
       modelCount: MODEL_DEFINITIONS.length,
@@ -289,6 +330,14 @@ export class GodCore {
       verification: this.verification.snapshot(),
       selfHealing: this.selfHealing.snapshot(),
       observability: this.observability.snapshot(),
+      resources: this.resourceManager.snapshot(),
+      network: this.network.snapshot(),
+      plugins: this.plugins.snapshot(),
+      developer: this.developer.snapshot(),
+      api: this.api.snapshot(),
+      data: this.data.snapshot(),
+      training: this.training.snapshot(),
+      continual: this.continual.snapshot(),
       knowledge: this.knowledge.snapshot(),
       memory: this.memory.snapshot(),
       learning: this.metaLearning.snapshot(),
