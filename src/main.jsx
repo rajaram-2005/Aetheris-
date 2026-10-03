@@ -438,6 +438,16 @@ function PlatformPhaseStrip({ runtimeSnapshot }) {
   )
 }
 
+function FinalPhaseStrip({ runtimeSnapshot }) {
+  const phases = runtimeSnapshot?.finalPhases || []
+  return (
+    <div className="final-phase-strip">
+      <div className="final-phase-copy"><span>51–62 / UNIVERSAL AIOS</span><strong>State, modes, safety, the whole system</strong></div>
+      <div className="final-phase-pills">{phases.map((phase) => <span key={phase.id} title={phase.role}><b>{phase.number}</b>{phase.name}</span>)}</div>
+    </div>
+  )
+}
+
 function GraphNode({ icon: Icon, label, meta, status = 'done', tone = 'neutral' }) {
   return (
     <div className={`graph-node ${status} ${tone}`}>
@@ -568,6 +578,7 @@ function Dashboard({ command, setCommand, runCommand, setActiveView, tasks, onSe
       <ControlPhaseStrip runtimeSnapshot={runtimeSnapshot} />
       <ModePhaseStrip runtimeSnapshot={runtimeSnapshot} />
       <PlatformPhaseStrip runtimeSnapshot={runtimeSnapshot} />
+      <FinalPhaseStrip runtimeSnapshot={runtimeSnapshot} />
       <div className="quick-actions"><span className="quick-label">TRY A COMMAND</span>{QUICK_ACTIONS.map((action) => <QuickAction key={action.label} action={action} onClick={handleQuickAction} />)}</div>
 
       <div className="stats-grid">

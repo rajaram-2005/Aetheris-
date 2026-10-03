@@ -2,7 +2,7 @@ import { ConversationPlane } from './conversation.js'
 import { createMultimodalPlan } from './multimodal.js'
 import { ModelRouter } from './router.js'
 import { createExecutionGraph, NODE_STATUS } from './taskGraph.js'
-import { PLANE_DEFINITIONS, ARCHITECTURE_PHASES, CONTROL_PHASES, MODE_PHASES, PLATFORM_PHASES, MODEL_DEFINITIONS } from './registry.js'
+import { PLANE_DEFINITIONS, ARCHITECTURE_PHASES, CONTROL_PHASES, MODE_PHASES, PLATFORM_PHASES, FINAL_PHASES, MODEL_DEFINITIONS } from './registry.js'
 import { KnowledgeFabric } from './knowledgeFabric.js'
 import { MemoryFabric } from './memoryFabric.js'
 import { MetaLearningEngine } from './metaLearning.js'
@@ -36,6 +36,14 @@ import { UniversalApi } from './universalApi.js'
 import { DataLayer } from './dataLayer.js'
 import { TrainingFabric } from './trainingFabric.js'
 import { ContinualImprovement } from './continualImprovement.js'
+import { TaskStateStore } from './taskState.js'
+import { ProjectContext } from './projectContext.js'
+import { CommandCatalog } from './commandCatalog.js'
+import { ExecutionLoop } from './executionLoop.js'
+import { HardwareStack } from './hardwareStack.js'
+import { DeploymentModes } from './deploymentModes.js'
+import { SafetyArchitecture } from './safetyArchitecture.js'
+import { AiosEnvironment } from './aiosEnvironment.js'
 
 export class GodCore {
   constructor({ projectId = 'aetheris-core', projectName = 'Aetheris / Core', online = false, emit = () => {} } = {}) {
@@ -70,6 +78,14 @@ export class GodCore {
     this.data = new DataLayer()
     this.training = new TrainingFabric()
     this.continual = new ContinualImprovement({ memory: this.memory, knowledge: this.knowledge })
+    this.taskState = new TaskStateStore()
+    this.projectContext = new ProjectContext({ projectId, projectName })
+    this.commandCatalog = new CommandCatalog()
+    this.executionLoop = new ExecutionLoop({ observability: this.observability })
+    this.hardware = new HardwareStack({ system: this.system, resources: this.resourceManager })
+    this.modes = new DeploymentModes({ hardware: this.hardware })
+    this.safety = new SafetyArchitecture({ security: this.security })
+    this.aios = new AiosEnvironment({ modes: this.modes, hardware: this.hardware })
     this.workflow = new WorkflowEngine()
     this.swarm = new AgentSwarm({ emit })
     this.conversation = new ConversationPlane({ projectId, projectName })
@@ -108,6 +124,8 @@ export class GodCore {
     const filePlan = /file|folder|project|delete|remove/i.test(understanding.text) ? this.files.planOperation(/delete|remove/i.test(understanding.text) ? 'delete' : 'read', understanding.text, { approved: options.approved }) : null
     const browserPlan = understanding.risk.networkRequested ? this.browser.planNavigation(understanding.text, { approved: options.approved }) : null
     const projectPlan = understanding.intent === 'software' ? this.projectWork.plan(understanding.text, { approved: options.approved }) : null
+    const commandInfo = this.commandCatalog.resolve(understanding.text)
+    const project = this.projectContext.context()
     const sandboxProfile = understanding.intent === 'software' || understanding.intent === 'engineering' ? 'code' : understanding.risk.networkRequested ? 'network' : understanding.intent === 'computer-control' ? 'tool' : 'readonly'
     const sandboxInstance = this.sandbox.create({ taskId: `pending-${this.taskSequence}`, profile: sandboxProfile, scope: 'project', approved: options.approved })
     const sandboxPlan = { ...sandboxInstance, cleanup: 'terminate-after-verification' }
@@ -126,6 +144,11 @@ export class GodCore {
     const dataRefs = { relational: `tasks/pending-${this.taskSequence}`, vector: knowledgeEvidence.map((item) => item.chunkId), graph: knowledgeEvidence.map((item) => item.sourceId) }
     const trainingPlan = /train|fine[- ]tune|benchmark|dataset/i.test(understanding.text) ? this.training.plan({ dataset: understanding.text, objective: understanding.intent, privacy: this.network.online ? 'local-first' : 'local-only' }) : null
     const improvementPlan = { outcome: 'evaluate after verification', usefulInformation: true, strategyMemory: true, automaticWeightUpdate: false }
+    const hardwarePlan = this.hardware.detect()
+    const modePlan = this.modes.select({ intent: understanding.intent, modality: multimodal.output, industrial: Boolean(industrialPlan) })
+    const safetyPlan = this.safety.evaluate({ intent: understanding.intent, uncertain: false }, { policy, approved: options.approved, physical: Boolean(industrialPlan) })
+    const executionPlan = { stages: this.executionLoop.snapshot().stages, resumable: true, privateReasoningStored: false }
+    const aiosPlan = this.aios.snapshot()
     const workflowPlan = this.workflow.define({
       id: `workflow-${this.taskSequence}`,
       name: `${understanding.intent} orchestration`,
@@ -164,6 +187,13 @@ export class GodCore {
       dataRefs,
       trainingPlan,
       improvementPlan,
+      commandInfo,
+      project,
+      hardwarePlan,
+      modePlan,
+      safetyPlan,
+      executionPlan,
+      aiosPlan,
       workflowPlan,
       swarm,
       knowledgeEvidence,
@@ -197,12 +227,17 @@ export class GodCore {
       this.data.link(task.id, evidence.sourceId, 'retrieves')
     })
     this.tasks.set(task.id, task)
+    this.taskState.create(task)
+    this.projectContext.attachTask('aetheris-core', task)
+    this.executionLoop.start(task)
     this.observability.startTask(task)
     this.emitTask(task, 'task.created')
     if (policy.requiresApproval) {
       graph.transition('policy', NODE_STATUS.BLOCKED, { output: 'Awaiting explicit approval' })
       this.addActivity(task, 'Policy paused execution', policy.reason, 'gold')
       task.checkpoint = 'policy'
+      this.taskState.update(task.id, { status: 'Awaiting approval', checkpoint: 'policy' })
+      this.executionLoop.fail(task.id, policy.reason)
       this.emitTask(task, 'task.awaiting-approval')
     } else {
       this.execute(task)
@@ -214,6 +249,8 @@ export class GodCore {
     const task = this.tasks.get(taskId)
     if (!task || task.status !== 'Awaiting approval') return task ? serializeTask(task) : null
     task.status = 'Running'
+    this.taskState.resume(taskId)
+    this.executionLoop.start(task)
     this.security.approve(task.id, { intent: task.intent })
     const approvedSandbox = this.sandbox.create({ taskId: task.id, profile: task.plan.sandboxPlan.profile, scope: 'project', approved: true })
     task.sandboxId = approvedSandbox.id
@@ -258,6 +295,7 @@ export class GodCore {
 
       task.graph.transition(nodeId, NODE_STATUS.RUNNING)
       task.checkpoint = nodeId
+      this.taskState.checkpoint(task.id, nodeId, { status: 'Running' })
       this.observability.record(task.id, 'node.started', { nodeId, kind: node.kind, label: node.label })
       this.addActivity(task, activityTitle(node, 'started'), node.detail, activityTone(node.kind))
       this.emitTask(task, 'task.node-started')
@@ -265,6 +303,8 @@ export class GodCore {
       setTimeout(() => {
         if (!this.tasks.has(task.id) || task.status === 'Paused') return
         task.graph.transition(nodeId, NODE_STATUS.COMPLETED, { output: outputFor(node, task) })
+        this.executionLoop.transition(task.id, loopStageForNode(nodeId), 'completed')
+        this.taskState.checkpoint(task.id, nodeId, { status: 'Running' })
         this.observability.record(task.id, 'node.completed', { nodeId, kind: node.kind, label: node.label })
         task.progress = Math.round((task.graph.completedCount() / task.graph.nodes.size) * 100)
         task.status = nodeId === 'respond' ? 'Completed' : 'Running'
@@ -285,6 +325,9 @@ export class GodCore {
           task.evaluation = evaluation
           task.verification = verification
           task.improvement = improvement
+          this.taskState.complete(task.id, { status: 'Completed', verification: verification.status, outputs: [responseFor(task)] })
+          this.executionLoop.complete(task.id)
+          this.projectContext.addConversation('aetheris-core', { role: 'assistant', content: responseFor(task), taskId: task.id })
         }
         this.addActivity(task, activityTitle(node, 'completed'), node.kind === 'agent' ? `${node.label} · ${node.detail}` : node.detail, activityTone(node.kind))
         this.emitTask(task, nodeId === 'respond' ? 'task.completed' : 'task.node-completed')
@@ -307,6 +350,7 @@ export class GodCore {
       controlPhases: CONTROL_PHASES,
       modePhases: MODE_PHASES,
       platformPhases: PLATFORM_PHASES,
+      finalPhases: FINAL_PHASES,
       agentsOnline: 42,
       agentCount: 56,
       modelCount: MODEL_DEFINITIONS.length,
@@ -338,6 +382,14 @@ export class GodCore {
       data: this.data.snapshot(),
       training: this.training.snapshot(),
       continual: this.continual.snapshot(),
+      taskState: this.taskState.snapshot(),
+      projects: this.projectContext.snapshot(),
+      commands: this.commandCatalog.snapshot(),
+      executionLoop: this.executionLoop.snapshot(),
+      hardware: this.hardware.snapshot(),
+      modes: this.modes.snapshot(),
+      safety: this.safety.snapshot(),
+      aios: this.aios.snapshot(),
       knowledge: this.knowledge.snapshot(),
       memory: this.memory.snapshot(),
       learning: this.metaLearning.snapshot(),
@@ -429,4 +481,17 @@ function outputFor(node, task) {
 
 function responseFor(task) {
   return `RUN ${task.id} completed. God Core routed ${task.agents} specialists through the ${task.plan.multimodal.label} and verified the ${task.plan.multimodal.artifact} locally.`
+}
+
+function loopStageForNode(nodeId) {
+  if (nodeId === 'intent') return 'intent understanding'
+  if (nodeId === 'context') return 'context load'
+  if (nodeId === 'policy') return 'capability routing'
+  if (nodeId === 'planner') return 'task planning'
+  if (nodeId === 'verify') return 'verification'
+  if (nodeId === 'synthesize') return 'synthesize'
+  if (nodeId === 'respond') return 'chat response'
+  if (nodeId.startsWith('agent-')) return 'agent / model / tool routing'
+  if (nodeId.startsWith('pipeline-')) return 'execution'
+  return 'observation'
 }

@@ -68,6 +68,21 @@ export const PLATFORM_PHASES = [
   { id: 'continual-improvement', number: '50', name: 'Continual improvement', role: 'Knowledge and strategy, not automatic weights' },
 ]
 
+export const FINAL_PHASES = [
+  { id: 'task-state', number: '51', name: 'Task state', role: 'Resumable state, checkpoints, outputs, errors' },
+  { id: 'user-projects', number: '52', name: 'User projects', role: 'Conversations, files, tasks, assets, history' },
+  { id: 'chat-commands', number: '53', name: 'Chat commands', role: 'One conversational surface for every capability' },
+  { id: 'execution-loop', number: '54', name: 'Aetheris execution loop', role: 'Understand, route, execute, verify, learn' },
+  { id: 'hardware-stack', number: '55', name: 'Hardware stack', role: 'Runtime, inference, OS, CPU, GPU, NPU' },
+  { id: 'personal-computer', number: '56', name: 'Personal computer mode', role: 'Local models, memory, tools, creation' },
+  { id: 'workstation', number: '57', name: 'Workstation mode', role: 'Parallel agents, video, 3D, simulation' },
+  { id: 'server', number: '58', name: 'Server mode', role: 'Clusters, multi-user, APIs, scheduling' },
+  { id: 'edge', number: '59', name: 'Edge mode', role: 'Quantized local runtime for edge devices' },
+  { id: 'industrial', number: '60', name: 'Industrial mode', role: 'Twin, simulation, safety, authorized gateway' },
+  { id: 'safety-architecture', number: '61', name: 'Safety architecture', role: 'Decision, validation, policy, authorization, safety' },
+  { id: 'universal-aios', number: '62', name: 'Universal AIOS', role: 'Chat as control plane over execution plane' },
+]
+
 export const AGENT_GROUPS = [
   { id: 'intelligence', name: 'Intelligence', agents: ['Reasoning', 'Planning', 'Problem Solving', 'Strategy', 'Critique', 'Verification', 'Meta-Learning'] },
   { id: 'software', name: 'Software & digital engineering', agents: ['Software Architecture', 'Programming', 'Debugging', 'Testing', 'DevOps', 'Database', 'Cybersecurity'] },
