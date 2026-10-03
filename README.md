@@ -34,4 +34,6 @@ Then open the Vite URL shown in the terminal.
 
 The runtime also includes a model-knowledge consolidation fabric: local model metadata and verified model outputs are attributed, deduplicated, cross-checked, and written into the knowledge and memory fabrics. An offline journal applies task and model-memory updates locally. It intentionally does not merge model weights automatically; the installed model files and explicit distillation/training data remain separate.
 
+The Creative Studio includes local-only image, video, audio, 3D, and document pipeline adapters with real local preview assets. Image previews are stored under `public/media`; audio includes an offline WAV preview. Full local inference still depends on the installed model runtimes and hardware adapters.
+
 This is an interface and local runtime prototype; real model providers, storage, OS, and device adapters can be connected behind the existing control-plane contracts.

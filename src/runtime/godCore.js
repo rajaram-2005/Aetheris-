@@ -46,6 +46,7 @@ import { SafetyArchitecture } from './safetyArchitecture.js'
 import { AiosEnvironment } from './aiosEnvironment.js'
 import { ModelKnowledgeFabric } from './modelKnowledgeFabric.js'
 import { OfflineMemoryJournal } from './offlineMemory.js'
+import { OfflineMediaEngine } from './offlineMedia.js'
 
 export class GodCore {
   constructor({ projectId = 'aetheris-core', projectName = 'Aetheris / Core', online = false, emit = () => {} } = {}) {
@@ -90,6 +91,7 @@ export class GodCore {
     this.aios = new AiosEnvironment({ modes: this.modes, hardware: this.hardware })
     this.modelKnowledge = new ModelKnowledgeFabric({ knowledge: this.knowledge, memory: this.memory, verification: this.verification })
     this.offlineMemory = new OfflineMemoryJournal({ memory: this.memory, knowledge: this.knowledge })
+    this.offlineMedia = new OfflineMediaEngine({ network: this.network })
     this.workflow = new WorkflowEngine()
     this.swarm = new AgentSwarm({ emit })
     this.conversation = new ConversationPlane({ projectId, projectName })
@@ -140,6 +142,7 @@ export class GodCore {
     const scientificPlan = understanding.intent === 'engineering' || /equation|calculate|physics|chemistry|biology|uncertainty/i.test(understanding.text) ? this.scientific.plan(understanding.text, { domain: understanding.intent }) : null
     const educationPlan = understanding.intent === 'education' ? this.education.planLesson('local-learner', understanding.text) : null
     const creativePlan = understanding.intent === 'creation' ? this.creative.plan(understanding.text, { output: multimodal.output === 'default' ? 'auto' : multimodal.output }) : null
+    const offlineMediaPlan = understanding.intent === 'creation' ? this.offlineMedia.plan({ brief: understanding.text, output: multimodal.output === 'default' ? 'auto' : multimodal.output }) : null
     const researchPlan = understanding.intent === 'research' ? this.research.plan(understanding.text, { online: this.security.online }) : null
     const verificationPlan = this.verification.plan({ plan: { knowledgeEvidence } })
     const selfHealingPlan = { onFailure: ['diagnose', 'propose fix', 'sandbox', 'test', 'verify'], retries: 2, concealFailure: false }
@@ -184,6 +187,7 @@ export class GodCore {
       scientificPlan,
       educationPlan,
       creativePlan,
+      offlineMediaPlan,
       researchPlan,
       verificationPlan,
       selfHealingPlan,
@@ -319,6 +323,7 @@ export class GodCore {
         if (nodeId === 'respond') {
           task.checkpoint = 'complete'
           const verification = this.verification.evaluate(task)
+          const mediaJob = task.plan.offlineMediaPlan ? this.offlineMedia.render(task.plan.offlineMediaPlan) : null
           const consolidation = this.modelKnowledge.consolidate({ task, verified: verification.passed })
           const offlineUpdate = this.offlineMemory.enqueueTask(task, { verification: verification.status, consolidation })
           const memoryFlush = this.offlineMemory.flush({ localOnly: true })
@@ -338,6 +343,7 @@ export class GodCore {
           task.improvement = improvement
           task.modelKnowledge = consolidation
           task.offlineMemory = { update: offlineUpdate, flush: memoryFlush }
+          task.media = mediaJob
           this.taskState.complete(task.id, { status: 'Completed', verification: verification.status, outputs: [responseFor(task)] })
           this.executionLoop.complete(task.id)
           this.projectContext.addConversation('aetheris-core', { role: 'assistant', content: responseFor(task), taskId: task.id })
@@ -368,6 +374,7 @@ export class GodCore {
       ['platform', Boolean(this.resourceManager && this.hardware && this.modes)],
       ['extensibility', Boolean(this.plugins && this.developer && this.api)],
       ['model-knowledge', Boolean(this.modelKnowledge && this.offlineMemory)],
+      ['offline-media', Boolean(this.offlineMedia)],
     ].map(([id, ready]) => ({ id, ready }))
     return { status: checks.every((check) => check.ready) ? 'healthy' : 'degraded', checks, localFirst: !snapshot.online, connectedSections: 62, phaseGroups: 6, timestamp: new Date().toISOString() }
   }
@@ -421,6 +428,7 @@ export class GodCore {
       aios: this.aios.snapshot(),
       modelKnowledge: this.modelKnowledge.snapshot(),
       offlineMemory: this.offlineMemory.status(),
+      offlineMedia: this.offlineMedia.snapshot(),
       knowledge: this.knowledge.snapshot(),
       memory: this.memory.snapshot(),
       learning: this.metaLearning.snapshot(),

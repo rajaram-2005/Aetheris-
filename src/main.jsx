@@ -711,20 +711,30 @@ function MemoryFabricCard({ title, value, detail, icon: Icon, tone, items }) {
   return <div className="memory-fabric-card"><div className="memory-fabric-top"><ToneIcon icon={Icon} tone={tone} size={17} /><span>{title}</span><MoreHorizontal size={15} className="muted-icon" /></div><div className="memory-big-value"><strong>{value}</strong><span>{detail}</span></div><div className="memory-item-list">{items.map((item) => <span key={item}><span className={`memory-item-dot ${tone}`} />{item}</span>)}</div></div>
 }
 
-function StudioView() {
+function StudioView({ runtime, runtimeSnapshot }) {
   const [studioTab, setStudioTab] = useState('All assets')
+  const [outputMode, setOutputMode] = useState('image')
+  const [brief, setBrief] = useState('A cinematic engineering visual for my active project')
+  const [generated, setGenerated] = useState(null)
+  const media = runtimeSnapshot?.offlineMedia || {}
+  const createMedia = () => {
+    const plan = runtime.planOfflineMedia({ brief, output: outputMode })
+    setGenerated(runtime.renderOfflineMedia(plan))
+  }
   return (
     <div className="page-content">
-      <PageHeader eyebrow="CREATION PLANE / MULTIMODAL STUDIO" title="Make something remarkable" description="One creative workspace for writing, visuals, audio, video, diagrams, documents, and 3D assets." action={{ label: 'New creation', icon: Plus }} />
-      <div className="studio-command"><div className="studio-command-icon"><Sparkles size={20} /></div><div><span className="panel-eyebrow">CREATIVE DIRECTOR</span><strong>Describe what you want to make</strong><small>Aetheris will plan the pipeline, select models, and keep the output coherent.</small></div><button className="primary-small">Start creating <ArrowRight size={14} /></button></div>
-      <div className="studio-tabs">{['All assets', 'Images', 'Video', 'Audio', 'Documents'].map((tab) => <button key={tab} className={studioTab === tab ? 'active' : ''} onClick={() => setStudioTab(tab)}>{tab}</button>)}<span className="studio-tab-count">12 assets</span></div>
-      <div className="asset-grid"><AssetCard tone="mint" type="DIAGRAM" title="Universal AIOS architecture" meta="Generated 12 min ago" icon={Layers3} /><AssetCard tone="violet" type="PRESENTATION" title="Aetheris product brief" meta="12 slides · draft" icon={FileText} /><AssetCard tone="gold" type="SIMULATION PLOT" title="Converter waveform / v2" meta="Generated 2 hours ago" icon={Activity} /><AssetCard tone="blue" type="AUDIO" title="Five-minute project speech" meta="Voice · 04:58" icon={AudioLines} /><AssetCard tone="coral" type="IMAGE" title="Industrial digital twin" meta="Generated yesterday" icon={Image} /><AssetCard tone="mint" type="DOCUMENT" title="Verification report" meta="PDF · 18 pages" icon={FileText} /></div>
+      <PageHeader eyebrow="CREATION PLANE / OFFLINE MEDIA STUDIO" title={<>Make something <em>remarkable.</em></>} description="Local image, video, audio, 3D, and document pipelines with real previews, clear provenance, and no network dependency." action={{ label: 'New creation', icon: Plus }} />
+      <div className="studio-command studio-command-modern"><div className="studio-command-icon"><Sparkles size={20} /></div><div className="studio-command-copy"><span className="panel-eyebrow">CREATIVE DIRECTOR / LOCAL MODELS</span><strong>Describe what you want to make</strong><div className="studio-brief-row"><input value={brief} onChange={(event) => setBrief(event.target.value)} aria-label="Creative brief" /><button className="primary-small" onClick={createMedia}>Generate locally <ArrowRight size={14} /></button></div><small>God Core will plan the pipeline, select an offline model, and keep the output attributed.</small></div></div>
+      <div className="studio-control-row"><div className="studio-output-picker"><span className="panel-eyebrow">OUTPUT</span>{['image', 'video', 'audio', '3d', 'document'].map((type) => <button key={type} className={outputMode === type ? 'active' : ''} onClick={() => setOutputMode(type)}>{type === '3d' ? '3D' : type[0].toUpperCase() + type.slice(1)}</button>)}</div><div className="studio-runtime-state"><span className="status-dot mint pulse" /> LOCAL ONLY <i>·</i> {media.catalogModels || 0} models <i>·</i> {media.assets || 0} previews</div></div>
+      {generated && <div className="generated-media-banner"><div className="generated-media-icon"><Check size={17} /></div><div><span className="panel-eyebrow">OFFLINE OUTPUT / {generated.output.toUpperCase()}</span><strong>{generated.status === 'preview-ready' ? 'Local preview is ready' : 'Pipeline contract is ready'}</strong><small>{generated.model} · no network used · {generated.preview?.title || 'adapter output pending'}</small></div>{generated.preview?.url && <img src={generated.preview.url} alt="Generated local preview" />}</div>}
+      <div className="studio-tabs">{['All assets', 'Images', 'Video', 'Audio', 'Documents'].map((tab) => <button key={tab} className={studioTab === tab ? 'active' : ''} onClick={() => setStudioTab(tab)}>{tab}</button>)}<span className="studio-tab-count">{12 + (generated ? 1 : 0)} assets</span></div>
+      <div className="asset-grid"><AssetCard tone="mint" type="DIAGRAM" title="Universal AIOS architecture" meta="Generated 12 min ago" icon={Layers3} image="/media/digital-twin-factory.jpg" /><AssetCard tone="violet" type="PRESENTATION" title="Aetheris product brief" meta="12 slides · draft" icon={FileText} image="/media/aetheris-studio.jpg" /><AssetCard tone="gold" type="SIMULATION PLOT" title="Converter waveform / v2" meta="Generated 2 hours ago" icon={Activity} image="/media/ev-converter-lab.jpg" /><AssetCard tone="blue" type="AUDIO" title="Offline voice bed" meta="WAV · local preview" icon={AudioLines} image="/media/aetheris-studio.jpg" /><AssetCard tone="coral" type="IMAGE" title="Industrial digital twin" meta="Photorealistic · local asset" icon={Image} image="/media/digital-twin-factory.jpg" /><AssetCard tone="mint" type="DOCUMENT" title="Verification report" meta="PDF · 18 pages" icon={FileText} image="/media/ev-converter-lab.jpg" /></div>
     </div>
   )
 }
 
-function AssetCard({ tone, type, title, meta, icon: Icon }) {
-  return <button className={`asset-card ${tone}`}><div className="asset-art"><div className="asset-art-lines" /><div className="asset-art-icon"><Icon size={25} /></div><span className="asset-art-label">{type}</span></div><div className="asset-card-copy"><strong>{title}</strong><span>{meta}</span></div><ArrowUpRight size={15} className="asset-arrow" /></button>
+function AssetCard({ tone, type, title, meta, icon: Icon, image }) {
+  return <button className={`asset-card ${tone}`}><div className={`asset-art ${image ? 'has-image' : ''}`} style={image ? { backgroundImage: `url(${image})` } : undefined}><div className="asset-art-overlay" /><div className="asset-art-lines" /><div className="asset-art-icon"><Icon size={25} /></div><span className="asset-art-label">{type}</span></div><div className="asset-card-copy"><strong>{title}</strong><span>{meta}</span></div><ArrowUpRight size={15} className="asset-arrow" /></button>
 }
 
 function DevicesView() {
@@ -813,7 +823,7 @@ function App() {
       case 'agents': return <AgentsView />
       case 'models': return <ModelsView />
       case 'knowledge': return <KnowledgeView runtimeSnapshot={runtimeSnapshot} />
-      case 'studio': return <StudioView />
+      case 'studio': return <StudioView runtime={runtime} runtimeSnapshot={runtimeSnapshot} />
       case 'devices': return <DevicesView />
       default: return <Dashboard command={command} setCommand={setCommand} runCommand={runCommand} setActiveView={setActiveView} tasks={tasks} onSelectTask={openTask} runtimeSnapshot={runtimeSnapshot} runtimeHealth={runtimeHealth} />
     }

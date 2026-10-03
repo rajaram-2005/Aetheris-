@@ -60,6 +60,12 @@ export function createAetherisRuntime(options = {}) {
     memoryStatus() {
       return godCore.offlineMemory.status()
     },
+    planOfflineMedia(payload) {
+      return godCore.offlineMedia.plan(payload)
+    },
+    renderOfflineMedia(plan) {
+      return godCore.offlineMedia.render(plan)
+    },
     getTrace(taskId) {
       return godCore.observability.get(taskId)
     },
@@ -122,3 +128,4 @@ export * from './safetyArchitecture.js'
 export * from './aiosEnvironment.js'
 export * from './modelKnowledgeFabric.js'
 export * from './offlineMemory.js'
+export * from './offlineMedia.js'
