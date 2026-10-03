@@ -29,6 +29,19 @@ export const ARCHITECTURE_PHASES = [
   { id: 'computer-control', number: '20', name: 'Chat → computer control', role: 'Observe, act, compare, verify' },
 ]
 
+export const CONTROL_PHASES = [
+  { id: 'cross-platform-system', number: '21', name: 'Cross-platform system', role: 'Windows, Linux, macOS adapters' },
+  { id: 'universal-terminal', number: '22', name: 'Universal terminal', role: 'Shell detection and safe commands' },
+  { id: 'application-control', number: '23', name: 'Application control', role: 'Registry, resolve, launch, verify' },
+  { id: 'file-control', number: '24', name: 'File control', role: 'Search, understand, operate, verify' },
+  { id: 'browser-control', number: '25', name: 'Browser control', role: 'Navigate, perceive, act, observe' },
+  { id: 'code / project work', number: '26', name: 'Code / project work', role: 'Analyze, implement, test, debug' },
+  { id: 'workflow-engine', number: '27', name: 'Workflow engine', role: 'DAG, retries, checkpoints, approvals' },
+  { id: 'agent-swarms', number: '28', name: 'Agent swarms', role: 'Temporary specialist teams' },
+  { id: 'computer-use-loop', number: '29', name: 'Computer-use loop', role: 'Observe, act, compare, correct' },
+  { id: 'security-architecture', number: '30', name: 'Security architecture', role: 'Layered permissions and sandbox' },
+]
+
 export const AGENT_GROUPS = [
   { id: 'intelligence', name: 'Intelligence', agents: ['Reasoning', 'Planning', 'Problem Solving', 'Strategy', 'Critique', 'Verification', 'Meta-Learning'] },
   { id: 'software', name: 'Software & digital engineering', agents: ['Software Architecture', 'Programming', 'Debugging', 'Testing', 'DevOps', 'Database', 'Cybersecurity'] },

@@ -408,6 +408,16 @@ function ArchitecturePhaseStrip({ runtimeSnapshot }) {
   )
 }
 
+function ControlPhaseStrip({ runtimeSnapshot }) {
+  const phases = runtimeSnapshot?.controlPhases || []
+  return (
+    <div className="control-phase-strip">
+      <div className="control-phase-copy"><span>21–30 / ACTION PLANE</span><strong>System adapters, workflows, and safety</strong></div>
+      <div className="control-phase-pills">{phases.map((phase) => <span key={phase.id} title={phase.role}><b>{phase.number}</b>{phase.name}</span>)}</div>
+    </div>
+  )
+}
+
 function GraphNode({ icon: Icon, label, meta, status = 'done', tone = 'neutral' }) {
   return (
     <div className={`graph-node ${status} ${tone}`}>
@@ -535,6 +545,7 @@ function Dashboard({ command, setCommand, runCommand, setActiveView, tasks, onSe
       <CommandComposer value={command} setValue={setCommand} onSubmit={handleSubmit} onQuickAction={handleQuickAction} large />
       <FoundationStrip runtimeSnapshot={runtimeSnapshot} />
       <ArchitecturePhaseStrip runtimeSnapshot={runtimeSnapshot} />
+      <ControlPhaseStrip runtimeSnapshot={runtimeSnapshot} />
       <div className="quick-actions"><span className="quick-label">TRY A COMMAND</span>{QUICK_ACTIONS.map((action) => <QuickAction key={action.label} action={action} onClick={handleQuickAction} />)}</div>
 
       <div className="stats-grid">

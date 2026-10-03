@@ -27,5 +27,6 @@ Then open the Vite URL shown in the terminal.
 - First implementation slice of sections 1–10: plane registry, conversation understanding, God Core orchestration, dependency-aware task graph, 56-agent registry, model routing/registry, and multimodal pipeline planning
 - In-browser runtime events for task creation, policy gating, agent/model delegation, verification, synthesis, and completion
 - Sections 11–20: image/video/audio/3D pipelines, document factory, memory and knowledge fabrics, meta-learning strategy memory, universal tool permissions, and the observe → act → verify computer-control contract
+- Sections 21–30: cross-platform Windows/Linux/macOS adapters, universal terminal, application and file control, browser control, code/project work, workflow engine, agent swarms, computer-use loop, and layered security policy
 
 This is an interface and local runtime prototype; real model providers, storage, OS, and device adapters can be connected behind the existing control-plane contracts.

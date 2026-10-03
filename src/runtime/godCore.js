@@ -2,21 +2,41 @@ import { ConversationPlane } from './conversation.js'
 import { createMultimodalPlan } from './multimodal.js'
 import { ModelRouter } from './router.js'
 import { createExecutionGraph, NODE_STATUS } from './taskGraph.js'
-import { PLANE_DEFINITIONS, ARCHITECTURE_PHASES, MODEL_DEFINITIONS } from './registry.js'
+import { PLANE_DEFINITIONS, ARCHITECTURE_PHASES, CONTROL_PHASES, MODEL_DEFINITIONS } from './registry.js'
 import { KnowledgeFabric } from './knowledgeFabric.js'
 import { MemoryFabric } from './memoryFabric.js'
 import { MetaLearningEngine } from './metaLearning.js'
 import { ToolFabric } from './toolFabric.js'
 import { ComputerControlLoop } from './computerControl.js'
+import { SystemAbstraction } from './systemAbstraction.js'
+import { SecurityPolicy } from './securityPolicy.js'
+import { UniversalTerminal } from './terminal.js'
+import { ApplicationControl } from './applicationControl.js'
+import { FileControl } from './fileControl.js'
+import { BrowserControl } from './browserControl.js'
+import { ProjectWork } from './projectWork.js'
+import { WorkflowEngine } from './workflowEngine.js'
+import { AgentSwarm } from './agentSwarm.js'
+import { ComputerUseLoop } from './computerUseLoop.js'
 
 export class GodCore {
   constructor({ projectId = 'aetheris-core', projectName = 'Aetheris / Core', online = false, emit = () => {} } = {}) {
     this.emit = emit
+    this.system = new SystemAbstraction()
+    this.security = new SecurityPolicy({ online })
     this.knowledge = new KnowledgeFabric()
     this.memory = new MemoryFabric({ knowledge: this.knowledge })
     this.metaLearning = new MetaLearningEngine({ memory: this.memory })
     this.tools = new ToolFabric({ online })
-    this.computer = new ComputerControlLoop({ tools: this.tools })
+    this.terminal = new UniversalTerminal({ system: this.system, security: this.security })
+    this.files = new FileControl({ security: this.security, knowledge: this.knowledge })
+    this.applications = new ApplicationControl({ security: this.security })
+    this.browser = new BrowserControl({ security: this.security })
+    this.computer = new ComputerControlLoop({ tools: this.tools, system: this.system })
+    this.computerUse = new ComputerUseLoop({ computer: this.computer, terminal: this.terminal, files: this.files, applications: this.applications, browser: this.browser })
+    this.projectWork = new ProjectWork({ files: this.files, terminal: this.terminal, security: this.security })
+    this.workflow = new WorkflowEngine()
+    this.swarm = new AgentSwarm({ emit })
     this.conversation = new ConversationPlane({ projectId, projectName })
     this.router = new ModelRouter({ online })
     this.tasks = new Map()
@@ -26,6 +46,7 @@ export class GodCore {
   setOnline(online) {
     this.router.setOnline(online)
     this.tools.setOnline(online)
+    this.security.setOnline(online)
     this.emit({ type: 'runtime.network', online: this.router.online })
   }
 
@@ -40,17 +61,40 @@ export class GodCore {
     })
     const multimodal = createMultimodalPlan(understanding)
     const routes = this.router.route(understanding, multimodal)
-    const policy = evaluatePolicy(understanding, { online: this.router.online, ...options })
-    const toolPlan = this.tools.plan(understanding, { approved: options.approved })
+    const policy = this.security.assess(understanding, { approved: options.approved })
+    const toolPlan = this.tools.plan(understanding, { approved: options.approved || policy.approved })
     const computerPlan = understanding.intent === 'computer-control' ? this.computer.plan(understanding) : null
+    const computerUsePlan = this.computerUse.plan(understanding.text)
+    const terminalPlan = /terminal|command|script|execute|run/i.test(understanding.text) ? this.terminal.plan(understanding.text, { approved: options.approved, sandbox: true }) : null
+    const applicationPlan = /open|launch/i.test(understanding.text) ? this.applications.planLaunch(understanding.text, { approved: options.approved }) : null
+    const filePlan = /file|folder|project|delete|remove/i.test(understanding.text) ? this.files.planOperation(/delete|remove/i.test(understanding.text) ? 'delete' : 'read', understanding.text, { approved: options.approved }) : null
+    const browserPlan = understanding.risk.networkRequested ? this.browser.planNavigation(understanding.text, { approved: options.approved }) : null
+    const projectPlan = understanding.intent === 'software' ? this.projectWork.plan(understanding.text, { approved: options.approved }) : null
+    const workflowPlan = this.workflow.define({
+      id: `workflow-${this.taskSequence}`,
+      name: `${understanding.intent} orchestration`,
+      approval: policy.requiresApproval,
+      nodes: routes.map((route, index) => ({ id: `agent-${index + 1}`, dependsOn: index === 0 ? [] : [`agent-${index}`], capability: route.capability })),
+    })
+    const swarm = this.swarm.compose({ taskId: `pending-${this.taskSequence}`, intent: understanding.intent, routes, complexity: understanding.complexity })
     const plan = {
       contextSources: context.memoryRefs.length + knowledgeEvidence.length + 1,
+      system: this.system.snapshot(),
       understanding,
       routes,
       policy,
+      security: policy,
       multimodal,
       toolPlan,
       computerPlan,
+      computerUsePlan,
+      terminalPlan,
+      applicationPlan,
+      filePlan,
+      browserPlan,
+      projectPlan,
+      workflowPlan,
+      swarm,
       knowledgeEvidence,
       tools: resolveTools(routes, understanding, toolPlan),
     }
@@ -65,6 +109,8 @@ export class GodCore {
       agents: routes.length,
       models: [...new Set(routes.map((route) => route.model.id))],
       tools: plan.tools,
+      workflowId: workflowPlan.id,
+      swarmId: swarm.id,
       plan,
       graph,
       createdAt: new Date().toISOString(),
@@ -89,6 +135,9 @@ export class GodCore {
     const task = this.tasks.get(taskId)
     if (!task || task.status !== 'Awaiting approval') return task ? serializeTask(task) : null
     task.status = 'Running'
+    this.security.approve(task.id, { intent: task.intent })
+    task.plan.security = { ...task.plan.security, approved: true, requiresApproval: false, reason: 'Approved by user' }
+    task.plan.policy = task.plan.security
     task.plan.toolPlan = this.tools.plan(task.plan.understanding, { approved: true })
     task.plan.tools = task.plan.toolPlan.map((tool) => tool.toolId)
     task.tools = task.plan.tools
@@ -105,6 +154,7 @@ export class GodCore {
       'context',
       'policy',
       'planner',
+      ...(task.plan.swarm?.status === 'formed' ? ['swarm'] : []),
       ...task.plan.routes.map((_, index) => `agent-${index + 1}`),
       ...task.plan.multimodal.stages.map((_, index) => `pipeline-${index + 1}`),
       'verify',
@@ -139,6 +189,7 @@ export class GodCore {
           const evaluation = this.metaLearning.evaluate(task)
           this.memory.rememberTask(task, evaluation)
           this.metaLearning.updateStrategy(task, evaluation)
+          this.swarm.disband(task.swarmId)
           this.conversation.remember(task)
           this.conversation.addMessage('assistant', responseFor(task), { taskId: task.id, evaluation })
           task.evaluation = evaluation
@@ -161,14 +212,25 @@ export class GodCore {
     return {
       planes: PLANE_DEFINITIONS,
       phases: ARCHITECTURE_PHASES,
+      controlPhases: CONTROL_PHASES,
       agentsOnline: 42,
       agentCount: 56,
       modelCount: MODEL_DEFINITIONS.length,
+      system: this.system.snapshot(),
+      security: this.security.snapshot(),
       tools: this.tools.snapshot(),
+      terminal: this.terminal.snapshot(),
+      applications: this.applications.snapshot(),
+      files: this.files.snapshot(),
+      browser: this.browser.snapshot(),
+      project: this.projectWork.snapshot(),
+      workflows: this.workflow.snapshot(),
+      swarms: this.swarm.snapshot(),
       knowledge: this.knowledge.snapshot(),
       memory: this.memory.snapshot(),
       learning: this.metaLearning.snapshot(),
       computer: this.computer.plan({ text: '', intent: 'general', modalities: [], risk: {} }),
+      computerUse: this.computerUse.snapshot(),
       tasks: [...this.tasks.values()].map(serializeTask),
       online: this.router.online,
     }
@@ -227,6 +289,7 @@ function activityTitle(node, phase) {
   if (node.id === 'context') return `Context engine ${phase}`
   if (node.id === 'policy') return `Policy engine ${phase}`
   if (node.id === 'planner') return `Task planner ${phase}`
+  if (node.kind === 'swarm') return `Agent swarm ${phase}`
   if (node.id === 'verify') return `Verification ${phase}`
   if (node.id === 'synthesize') return `Arbitration ${phase}`
   if (node.kind === 'pipeline') return `${node.label} ${phase}`
@@ -236,7 +299,7 @@ function activityTitle(node, phase) {
 function activityTone(kind) {
   if (kind === 'security') return 'gold'
   if (kind === 'verification') return 'blue'
-  if (kind === 'agent') return 'violet'
+  if (kind === 'agent' || kind === 'swarm') return 'violet'
   return 'mint'
 }
 
@@ -245,6 +308,7 @@ function outputFor(node, task) {
   if (node.id === 'context') return `${task.plan.contextSources} memory references`
   if (node.id === 'policy') return task.plan.policy.reason
   if (node.kind === 'agent') return `${node.label} produced a verified intermediate result`
+  if (node.kind === 'swarm') return 'Specialist team delegated with an independent critic'
   if (node.kind === 'pipeline') return `${node.label} produced ${node.detail}`
   if (node.id === 'verify') return 'Factual, logical, technical, safety, and quality checks passed'
   if (node.id === 'synthesize') return `Synthesized ${task.plan.multimodal.artifact} response`

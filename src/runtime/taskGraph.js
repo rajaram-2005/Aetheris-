@@ -70,6 +70,12 @@ export function createExecutionGraph(plan) {
   graph.addNode({ id: 'policy', label: 'Policy', kind: 'security', detail: plan.policy.requiresApproval ? 'approval required' : 'scope approved', dependsOn: ['context'] })
   graph.addNode({ id: 'planner', label: 'Task planner', kind: 'cognitive', detail: `${plan.routes.length} specialist routes`, dependsOn: ['policy'] })
 
+  const delegationDependencies = ['planner']
+  if (plan.swarm?.status === 'formed') {
+    graph.addNode({ id: 'swarm', label: 'Agent swarm', kind: 'swarm', detail: `${plan.swarm.members.length} members · critic assigned`, dependsOn: ['planner'], swarmId: plan.swarm.id })
+    delegationDependencies.push('swarm')
+  }
+
   const routeIds = plan.routes.map((route, index) => {
     const id = `agent-${index + 1}`
     graph.addNode({
@@ -77,7 +83,7 @@ export function createExecutionGraph(plan) {
       label: route.agent.name,
       kind: 'agent',
       detail: route.model.name,
-      dependsOn: ['planner'],
+      dependsOn: delegationDependencies,
       agentId: route.agent.id,
       modelId: route.model.id,
       capability: route.capability,
