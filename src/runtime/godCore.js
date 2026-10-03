@@ -44,6 +44,8 @@ import { HardwareStack } from './hardwareStack.js'
 import { DeploymentModes } from './deploymentModes.js'
 import { SafetyArchitecture } from './safetyArchitecture.js'
 import { AiosEnvironment } from './aiosEnvironment.js'
+import { ModelKnowledgeFabric } from './modelKnowledgeFabric.js'
+import { OfflineMemoryJournal } from './offlineMemory.js'
 
 export class GodCore {
   constructor({ projectId = 'aetheris-core', projectName = 'Aetheris / Core', online = false, emit = () => {} } = {}) {
@@ -86,6 +88,8 @@ export class GodCore {
     this.modes = new DeploymentModes({ hardware: this.hardware })
     this.safety = new SafetyArchitecture({ security: this.security })
     this.aios = new AiosEnvironment({ modes: this.modes, hardware: this.hardware })
+    this.modelKnowledge = new ModelKnowledgeFabric({ knowledge: this.knowledge, memory: this.memory, verification: this.verification })
+    this.offlineMemory = new OfflineMemoryJournal({ memory: this.memory, knowledge: this.knowledge })
     this.workflow = new WorkflowEngine()
     this.swarm = new AgentSwarm({ emit })
     this.conversation = new ConversationPlane({ projectId, projectName })
@@ -108,6 +112,8 @@ export class GodCore {
     const understanding = this.conversation.understand(request)
     const memoryContext = this.memory.contextFor(understanding.text)
     const knowledgeEvidence = this.knowledge.search(understanding.text)
+    const modelKnowledgePlan = this.modelKnowledge.plan({ query: understanding.text, offline: !this.network.online })
+    const offlineMemoryPlan = this.offlineMemory.status()
     const context = this.conversation.loadContext({
       ...options.context,
       memory: memoryContext,
@@ -197,6 +203,8 @@ export class GodCore {
       workflowPlan,
       swarm,
       knowledgeEvidence,
+      modelKnowledgePlan,
+      offlineMemoryPlan,
       tools: resolveTools(routes, understanding, toolPlan),
     }
     const graph = createExecutionGraph(plan)
@@ -311,6 +319,9 @@ export class GodCore {
         if (nodeId === 'respond') {
           task.checkpoint = 'complete'
           const verification = this.verification.evaluate(task)
+          const consolidation = this.modelKnowledge.consolidate({ task, verified: verification.passed })
+          const offlineUpdate = this.offlineMemory.enqueueTask(task, { verification: verification.status, consolidation })
+          const memoryFlush = this.offlineMemory.flush({ localOnly: true })
           const evaluation = this.metaLearning.evaluate(task)
           this.memory.rememberTask(task, evaluation)
           this.metaLearning.updateStrategy(task, evaluation)
@@ -325,6 +336,8 @@ export class GodCore {
           task.evaluation = evaluation
           task.verification = verification
           task.improvement = improvement
+          task.modelKnowledge = consolidation
+          task.offlineMemory = { update: offlineUpdate, flush: memoryFlush }
           this.taskState.complete(task.id, { status: 'Completed', verification: verification.status, outputs: [responseFor(task)] })
           this.executionLoop.complete(task.id)
           this.projectContext.addConversation('aetheris-core', { role: 'assistant', content: responseFor(task), taskId: task.id })
@@ -354,6 +367,7 @@ export class GodCore {
       ['security', Boolean(this.security && this.safety && this.sandbox)],
       ['platform', Boolean(this.resourceManager && this.hardware && this.modes)],
       ['extensibility', Boolean(this.plugins && this.developer && this.api)],
+      ['model-knowledge', Boolean(this.modelKnowledge && this.offlineMemory)],
     ].map(([id, ready]) => ({ id, ready }))
     return { status: checks.every((check) => check.ready) ? 'healthy' : 'degraded', checks, localFirst: !snapshot.online, connectedSections: 62, phaseGroups: 6, timestamp: new Date().toISOString() }
   }
@@ -405,6 +419,8 @@ export class GodCore {
       modes: this.modes.snapshot(),
       safety: this.safety.snapshot(),
       aios: this.aios.snapshot(),
+      modelKnowledge: this.modelKnowledge.snapshot(),
+      offlineMemory: this.offlineMemory.status(),
       knowledge: this.knowledge.snapshot(),
       memory: this.memory.snapshot(),
       learning: this.metaLearning.snapshot(),

@@ -518,6 +518,15 @@ kbd { font-family: var(--font-mono); border: 1px solid var(--line-strong); paddi
 .node-b { right: 11px; top: 78px; color: var(--violet); }
 .node-c { left: 24px; bottom: 19px; color: var(--gold); }
 .node-d { right: 83px; bottom: 1px; color: var(--blue); }
+.model-memory-banner { display: flex; align-items: center; gap: 12px; padding: 13px 16px; border: 1px solid rgba(181,245,216,.14); border-radius: 9px; background: linear-gradient(95deg, rgba(115,223,180,.07), rgba(148,132,255,.04)); margin-bottom: 12px; }
+.model-memory-mark { width: 34px; height: 34px; display: grid; place-items: center; flex: 0 0 auto; border-radius: 8px; color: var(--mint); background: var(--mint-dim); }
+.model-memory-copy { display: grid; gap: 4px; min-width: 0; flex: 1; }
+.model-memory-copy strong { font-size: 10px; }
+.model-memory-copy small { color: #758a83; font-size: 8px; }
+.model-memory-stats { display: flex; gap: 17px; flex: 0 0 auto; }
+.model-memory-stats > div { display: grid; gap: 3px; padding-left: 13px; border-left: 1px solid var(--line-strong); }
+.model-memory-stats strong { color: var(--mint); font-size: 15px; font-weight: 600; }
+.model-memory-stats span { color: #71847e; font-family: var(--font-mono); font-size: 7px; white-space: nowrap; }
 .memory-fabric-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 9px; margin-bottom: 15px; }
 .memory-fabric-card { min-height: 175px; padding: 13px 14px; border: 1px solid var(--line); border-radius: 9px; background: rgba(14,19,22,.78); }
 .memory-fabric-top { display: flex; align-items: center; gap: 8px; color: #8ea09a; font-size: 9px; }
@@ -745,6 +754,10 @@ kbd { font-family: var(--font-mono); border: 1px solid var(--line-strong); paddi
   .toolbar-note { align-self: flex-end; }
   .knowledge-hero { padding: 21px; }
   .knowledge-visual { display: none; }
+  .model-memory-banner { align-items: flex-start; flex-wrap: wrap; }
+  .model-memory-copy { flex: 1 1 calc(100% - 50px); }
+  .model-memory-stats { flex-basis: 100%; justify-content: space-between; margin-top: 6px; }
+  .model-memory-stats > div:first-child { padding-left: 0; border-left: 0; }
   .studio-command { align-items: flex-start; flex-wrap: wrap; }
   .studio-command > div:nth-child(2) { flex: 1 1 calc(100% - 60px); }
   .studio-command .primary-small { margin-left: 52px; }

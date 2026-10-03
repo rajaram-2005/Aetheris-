@@ -41,6 +41,25 @@ export function createAetherisRuntime(options = {}) {
     publishCapability(id) {
       return godCore.developer.publish(id)
     },
+    importModelKnowledge(payload) {
+      const result = godCore.modelKnowledge.ingestOutput(payload)
+      if (result.status === 'accepted') {
+        const update = godCore.offlineMemory.enqueue({ type: 'semantic', source: 'model-import', payload: { modelId: payload.modelId, prompt: payload.prompt, content: payload.content, provenance: 'verified model output' } })
+        result.offlineMemory = { update, flush: godCore.offlineMemory.flush({ localOnly: true }) }
+      }
+      return result
+    },
+    consolidateModelKnowledge(options = {}) {
+      const result = godCore.modelKnowledge.consolidate(options)
+      if (result.verified) result.offlineMemory = godCore.offlineMemory.flush({ localOnly: true })
+      return result
+    },
+    flushOfflineMemory(options = { localOnly: true }) {
+      return godCore.offlineMemory.flush(options)
+    },
+    memoryStatus() {
+      return godCore.offlineMemory.status()
+    },
     getTrace(taskId) {
       return godCore.observability.get(taskId)
     },
@@ -101,3 +120,5 @@ export * from './hardwareStack.js'
 export * from './deploymentModes.js'
 export * from './safetyArchitecture.js'
 export * from './aiosEnvironment.js'
+export * from './modelKnowledgeFabric.js'
+export * from './offlineMemory.js'

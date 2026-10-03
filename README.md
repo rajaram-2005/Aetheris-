@@ -32,4 +32,6 @@ Then open the Vite URL shown in the terminal.
 - Sections 41–50: resource manager, first-class offline/online modes, plugin/MCP fabric, developer SDK contracts, universal API, data layer, training fabric, and continual improvement without automatic weight updates
 - Sections 51–62: resumable task state, project context, command catalog, execution loop, hardware/deployment modes, layered safety architecture, and the complete Universal AIOS environment
 
+The runtime also includes a model-knowledge consolidation fabric: local model metadata and verified model outputs are attributed, deduplicated, cross-checked, and written into the knowledge and memory fabrics. An offline journal applies task and model-memory updates locally. It intentionally does not merge model weights automatically; the installed model files and explicit distillation/training data remain separate.
+
 This is an interface and local runtime prototype; real model providers, storage, OS, and device adapters can be connected behind the existing control-plane contracts.

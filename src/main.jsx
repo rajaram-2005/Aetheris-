@@ -693,11 +693,14 @@ function Factor({ label, value, width, tone }) {
   return <div className="factor"><div><span>{label}</span><strong>{value}</strong></div><div className="factor-track"><span className={tone} style={{ width }} /></div></div>
 }
 
-function KnowledgeView() {
+function KnowledgeView({ runtimeSnapshot }) {
+  const modelKnowledge = runtimeSnapshot?.modelKnowledge || {}
+  const offlineMemory = runtimeSnapshot?.offlineMemory || {}
   return (
     <div className="page-content">
       <PageHeader eyebrow="MEMORY + KNOWLEDGE PLANE / LOCAL RAG" title="Give Aetheris context" description="Working, episodic, semantic, and procedural memory unified with a searchable local knowledge fabric." action={{ label: 'Ingest source', icon: Upload }} />
       <div className="knowledge-hero"><div className="knowledge-hero-copy"><div className="knowledge-pulse"><span /><span /><span /></div><span className="panel-eyebrow">KNOWLEDGE FABRIC</span><h2>Everything your project knows, connected.</h2><p>Sources are parsed, chunked, embedded, and linked into retrieval and graph indexes before they reach God Core.</p><div className="knowledge-hero-actions"><button className="primary-small"><Upload size={14} /> Add knowledge</button><button className="text-button">Explore graph <ArrowRight size={14} /></button></div></div><div className="knowledge-visual"><div className="knowledge-orbit orbit-a" /><div className="knowledge-orbit orbit-b" /><div className="knowledge-center"><Database size={22} /><span>RAG</span></div><div className="knowledge-node node-a"><FileText size={14} /></div><div className="knowledge-node node-b"><Image size={14} /></div><div className="knowledge-node node-c"><Code2 size={14} /></div><div className="knowledge-node node-d"><BookOpen size={14} /></div></div></div>
+      <div className="model-memory-banner"><div className="model-memory-mark"><BrainCircuit size={19} /></div><div className="model-memory-copy"><span className="panel-eyebrow">MODEL KNOWLEDGE FABRIC / OFFLINE JOURNAL</span><strong>{modelKnowledge.catalogModels || 0} local models mapped into Aetheris memory</strong><small>Verified outputs become attributed evidence and strategy memory. Model weights remain unchanged.</small></div><div className="model-memory-stats"><div><strong>{modelKnowledge.verifiedArtifacts || 0}</strong><span>verified artifacts</span></div><div><strong>{offlineMemory.pending || 0}</strong><span>pending updates</span></div><div><strong>{offlineMemory.applied || 0}</strong><span>applied locally</span></div></div></div>
       <div className="memory-fabric-grid"><MemoryFabricCard title="Working memory" value="12" detail="active task items" icon={Activity} tone="mint" items={['RUN-1042 context', 'Current permission scope', 'Open project files']} /><MemoryFabricCard title="Episodic memory" value="284" detail="past events" icon={Clock3} tone="violet" items={['Last engineering session', 'Yesterday’s project search', 'Morning digest run']} /><MemoryFabricCard title="Semantic memory" value="8.4k" detail="indexed chunks" icon={BookOpen} tone="gold" items={['Architecture principles', 'Converter notes', 'Research sources']} /><MemoryFabricCard title="Procedural memory" value="36" detail="learned strategies" icon={Wrench} tone="blue" items={['How to verify simulations', 'Local document workflow', 'Safe file operations']} /></div>
       <section className="panel sources-panel"><PanelHeader eyebrow="INGESTED SOURCES / 1,942 ITEMS" title="Project knowledge" action="Open index" /><div className="sources-list">{KNOWLEDGE_ITEMS.map((item) => <div className="source-row" key={item.title}><ToneIcon icon={item.icon} tone={item.tone} size={17} /><div><strong>{item.title}</strong><span>{item.meta}</span></div><div className="source-indexed"><CircleCheck size={14} /> indexed</div><MoreHorizontal size={16} className="muted-icon" /></div>)}</div></section>
     </div>
@@ -809,7 +812,7 @@ function App() {
       case 'workflows': return <WorkflowsView setActiveView={setActiveView} openTask={openTask} />
       case 'agents': return <AgentsView />
       case 'models': return <ModelsView />
-      case 'knowledge': return <KnowledgeView />
+      case 'knowledge': return <KnowledgeView runtimeSnapshot={runtimeSnapshot} />
       case 'studio': return <StudioView />
       case 'devices': return <DevicesView />
       default: return <Dashboard command={command} setCommand={setCommand} runCommand={runCommand} setActiveView={setActiveView} tasks={tasks} onSelectTask={openTask} runtimeSnapshot={runtimeSnapshot} runtimeHealth={runtimeHealth} />
