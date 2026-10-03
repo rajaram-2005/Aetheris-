@@ -85,7 +85,24 @@ export function createExecutionGraph(plan) {
     return id
   })
 
-  graph.addNode({ id: 'verify', label: 'Verification', kind: 'verification', detail: 'independent checks', dependsOn: routeIds.length ? routeIds : ['planner'] })
+  const pipelineIds = []
+  let pipelineDependencies = routeIds.length ? routeIds : ['planner']
+  plan.multimodal.stages.forEach((stage, index) => {
+    const id = `pipeline-${index + 1}`
+    graph.addNode({
+      id,
+      label: stage.label,
+      kind: 'pipeline',
+      detail: stage.detail,
+      qualityGate: stage.qualityGate,
+      dependsOn: pipelineDependencies,
+      pipelineStageId: stage.id,
+    })
+    pipelineIds.push(id)
+    pipelineDependencies = [id]
+  })
+
+  graph.addNode({ id: 'verify', label: 'Verification', kind: 'verification', detail: 'independent checks', dependsOn: pipelineIds.length ? pipelineDependencies : (routeIds.length ? routeIds : ['planner']) })
   graph.addNode({ id: 'synthesize', label: 'Synthesize', kind: 'cognitive', detail: 'compose result', dependsOn: ['verify'] })
   graph.addNode({ id: 'respond', label: 'Response', kind: 'control', detail: 'return to user', dependsOn: ['synthesize'] })
   return graph

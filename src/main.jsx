@@ -190,6 +190,7 @@ const MODEL_ROWS = [
   { name: 'Llava Vision 7B', type: 'VLM', quant: 'Q4_0', size: '4.8 GB', use: 'Screen · image context', status: 'Standby', accent: 'gold', latency: '410 ms' },
   { name: 'Whisper Large v3', type: 'ASR', quant: 'FP16', size: '3.1 GB', use: 'Voice transcription', status: 'Standby', accent: 'blue', latency: '260 ms' },
   { name: 'SDXL Lightning', type: 'Image', quant: 'FP16', size: '6.6 GB', use: 'Image · diagrams', status: 'Available', accent: 'coral', latency: '8.4 s' },
+  { name: 'Local 3D Pipeline', type: '3D', quant: 'Mixed', size: '8.8 GB', use: 'Geometry · materials · render', status: 'Available', accent: 'violet', latency: '14.0 s' },
 ]
 
 const KNOWLEDGE_ITEMS = [
@@ -397,6 +398,16 @@ function FoundationStrip({ runtimeSnapshot }) {
   )
 }
 
+function ArchitecturePhaseStrip({ runtimeSnapshot }) {
+  const phases = runtimeSnapshot?.phases || []
+  return (
+    <div className="phase-strip">
+      <div className="phase-copy"><span>11–20 / EXECUTION PLANE</span><strong>Creation, memory, tools, and computer control</strong></div>
+      <div className="phase-pills">{phases.map((phase) => <span key={phase.id} title={phase.role}><b>{phase.number}</b>{phase.name}</span>)}</div>
+    </div>
+  )
+}
+
 function GraphNode({ icon: Icon, label, meta, status = 'done', tone = 'neutral' }) {
   return (
     <div className={`graph-node ${status} ${tone}`}>
@@ -523,12 +534,13 @@ function Dashboard({ command, setCommand, runCommand, setActiveView, tasks, onSe
 
       <CommandComposer value={command} setValue={setCommand} onSubmit={handleSubmit} onQuickAction={handleQuickAction} large />
       <FoundationStrip runtimeSnapshot={runtimeSnapshot} />
+      <ArchitecturePhaseStrip runtimeSnapshot={runtimeSnapshot} />
       <div className="quick-actions"><span className="quick-label">TRY A COMMAND</span>{QUICK_ACTIONS.map((action) => <QuickAction key={action.label} action={action} onClick={handleQuickAction} />)}</div>
 
       <div className="stats-grid">
         <StatCard icon={Activity} label="Active run" value="01" detail="RUN-1042 · 2m 14s remaining" tone="mint" trend={{ label: '+1 today', positive: true }} />
         <StatCard icon={Bot} label="Agent fabric" value="42 / 56" detail="Capabilities online and available" tone="violet" trend={{ label: '75%', positive: true }} />
-        <StatCard icon={Cpu} label="Model fabric" value="08" detail="3 loaded · 5 ready on demand" tone="gold" trend={{ label: 'LOCAL', positive: true }} />
+        <StatCard icon={Cpu} label="Model fabric" value="09" detail="3 loaded · 6 ready on demand" tone="gold" trend={{ label: 'LOCAL', positive: true }} />
         <StatCard icon={ShieldCheck} label="Trust score" value="98.4%" detail="Last policy audit · 4 min ago" tone="blue" trend={{ label: 'Healthy', positive: true }} />
       </div>
 
@@ -622,14 +634,14 @@ function ModelsView() {
     <div className="page-content">
       <PageHeader eyebrow="MODEL PLANE / REGISTRY + ROUTING" title="Choose the right intelligence" description="A model-agnostic fabric that balances capability, privacy, latency, resource fit, and availability for every task." action={{ label: 'Add model', icon: Plus }} />
       <div className="model-health-grid"><div className="model-health-card"><div className="model-health-icon mint"><Cpu size={18} /></div><div><span>LOCAL RUNTIME</span><strong>Ready</strong><small>llama.cpp · CUDA 12.4</small></div><StatusDot tone="mint" pulse /></div><div className="model-health-card"><div className="model-health-icon violet"><HardDrive size={18} /></div><div><span>MEMORY BUDGET</span><strong>31.2 / 64 GB</strong><small>48.7% allocated</small></div><StatusDot tone="violet" /></div><div className="model-health-card"><div className="model-health-icon gold"><Gauge size={18} /></div><div><span>ROUTER LATENCY</span><strong>184 ms</strong><small>p95 over last 24h</small></div><StatusDot tone="gold" /></div><div className="model-health-card"><div className="model-health-icon blue"><Globe2 size={18} /></div><div><span>REMOTE MODELS</span><strong>Disabled</strong><small>Local-only policy active</small></div><LockKeyhole size={15} className="muted-icon" /></div></div>
-      <section className="panel model-table-panel"><PanelHeader eyebrow="INSTALLED MODELS / 08 TOTAL" title="Model registry" action="Routing rules" /><div className="model-table"><div className="model-table-head"><span>MODEL</span><span>TYPE / QUANTIZATION</span><span>SIZE</span><span>PRIMARY USE</span><span>STATUS</span><span>LATENCY</span></div>{MODEL_ROWS.map((model) => <ModelRow key={model.name} model={model} />)}</div><button className="load-more"><Plus size={14} /> Show 3 more installed models</button></section>
+      <section className="panel model-table-panel"><PanelHeader eyebrow="INSTALLED MODELS / 09 TOTAL" title="Model registry" action="Routing rules" /><div className="model-table"><div className="model-table-head"><span>MODEL</span><span>TYPE / QUANTIZATION</span><span>SIZE</span><span>PRIMARY USE</span><span>STATUS</span><span>LATENCY</span></div>{MODEL_ROWS.map((model) => <ModelRow key={model.name} model={model} />)}</div><button className="load-more"><Plus size={14} /> Show 3 more installed models</button></section>
       <div className="model-bottom-grid"><section className="panel routing-panel"><PanelHeader eyebrow="ROUTING POLICY" title="Why this model?" /><div className="routing-factors"><Factor label="Capability match" value="94%" width="94%" tone="mint" /><Factor label="Resource fit" value="88%" width="88%" tone="violet" /><Factor label="Privacy" value="100%" width="100%" tone="gold" /></div><p className="muted-paragraph">The router selected <strong>Aetheris Reasoner 32B</strong> for the active engineering workflow because it fits the local VRAM budget and policy.</p></section><section className="panel model-note-panel"><div className="quote-mark">“</div><p>Models are replaceable. The control plane, memory, tools, and verification contracts are the durable system.</p><span>— Aetheris architecture principle</span></section></div>
     </div>
   )
 }
 
 function ModelRow({ model }) {
-  return <div className="model-row"><div className="model-name"><ToneIcon icon={model.type === 'Image' ? Image : model.type === 'ASR' ? AudioLines : model.type === 'VLM' ? Eye : Cpu} tone={model.accent} size={17} /><strong>{model.name}</strong></div><div className="model-type"><span>{model.type}</span><small>{model.quant}</small></div><span className="model-size">{model.size}</span><span className="model-use">{model.use}</span><span className={`model-status ${model.status.toLowerCase()}`}><StatusDot tone={model.status === 'Loaded' ? 'mint' : model.status === 'Standby' ? 'gold' : 'muted'} />{model.status}</span><span className="model-latency">{model.latency}</span><MoreHorizontal size={16} className="muted-icon" /></div>
+  return <div className="model-row"><div className="model-name"><ToneIcon icon={model.type === 'Image' ? Image : model.type === '3D' ? Box : model.type === 'ASR' ? AudioLines : model.type === 'VLM' ? Eye : Cpu} tone={model.accent} size={17} /><strong>{model.name}</strong></div><div className="model-type"><span>{model.type}</span><small>{model.quant}</small></div><span className="model-size">{model.size}</span><span className="model-use">{model.use}</span><span className={`model-status ${model.status.toLowerCase()}`}><StatusDot tone={model.status === 'Loaded' ? 'mint' : model.status === 'Standby' ? 'gold' : 'muted'} />{model.status}</span><span className="model-latency">{model.latency}</span><MoreHorizontal size={16} className="muted-icon" /></div>
 }
 
 function Factor({ label, value, width, tone }) {

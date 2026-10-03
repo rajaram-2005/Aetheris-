@@ -36,8 +36,9 @@ export class ModelRouter {
     const desired = modality === 'image' ? 'image'
       : modality === 'video' ? 'video'
         : modality === 'audio' ? 'audio'
-          : modality === 'document' ? 'specialized'
-            : understanding.complexity === 'low' ? 'slm' : 'llm'
+          : modality === '3d' ? '3d'
+            : modality === 'document' ? 'specialized'
+              : understanding.complexity === 'low' ? 'slm' : 'llm'
     const match = candidates.find((model) => model.type === desired)
     return match || candidates.find((model) => model.type === 'slm') || candidates[0]
   }

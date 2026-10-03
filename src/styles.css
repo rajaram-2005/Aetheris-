@@ -199,6 +199,13 @@ kbd { font-family: var(--font-mono); border: 1px solid var(--line-strong); paddi
 .foundation-pills span b { color: var(--mint-strong); font-weight: 400; }
 .foundation-mode { display: inline-flex; align-items: center; gap: 5px; flex: 0 0 auto; color: #6b837a; font-family: var(--font-mono); font-size: 7px; }
 .foundation-mode svg { color: var(--mint-strong); }
+.phase-strip { min-height: 38px; display: flex; align-items: center; gap: 15px; padding: 6px 11px; border: 1px solid rgba(201, 192, 255, .12); border-radius: 7px; background: rgba(148, 132, 255, .035); overflow: hidden; }
+.phase-copy { display: grid; gap: 3px; min-width: 205px; flex: 0 0 auto; }
+.phase-copy span { color: var(--violet-strong); font-family: var(--font-mono); font-size: 7px; letter-spacing: .08em; }
+.phase-copy strong { color: #9a98bd; font-size: 8px; font-weight: 500; white-space: nowrap; }
+.phase-pills { display: flex; align-items: center; gap: 5px; min-width: 0; overflow: hidden; flex: 1; }
+.phase-pills span { display: inline-flex; align-items: center; gap: 4px; height: 21px; padding: 0 6px; white-space: nowrap; border: 1px solid rgba(201,192,255,.1); border-radius: 4px; color: #78758f; background: rgba(201,192,255,.025); font-family: var(--font-mono); font-size: 7px; }
+.phase-pills span b { color: var(--violet); font-weight: 400; }
 .quick-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; padding: 13px 2px 27px; }
 .quick-label { font-size: 8px; color: #596a66; margin-right: 4px; }
 .quick-action { display: inline-flex; align-items: center; gap: 7px; height: 27px; border-radius: 5px; border: 1px solid var(--line); background: rgba(18,25,27,.74); color: #9eafaa; font-size: 9px; padding: 0 8px; transition: all .18s; }
@@ -662,6 +669,9 @@ kbd { font-family: var(--font-mono); border: 1px solid var(--line-strong); paddi
   .foundation-copy { min-width: 140px; }
   .foundation-pills { order: 3; flex-basis: 100%; overflow-x: auto; padding-bottom: 2px; }
   .foundation-mode { margin-left: auto; }
+  .phase-strip { align-items: flex-start; flex-wrap: wrap; gap: 7px; padding: 9px 10px; }
+  .phase-copy { min-width: 0; flex: 1 1 100%; }
+  .phase-pills { order: 3; flex-basis: 100%; overflow-x: auto; padding-bottom: 2px; }
   .quick-actions { padding-bottom: 19px; }
   .quick-label { width: 100%; }
   .stats-grid, .workflow-grid, .model-health-grid, .memory-fabric-grid, .device-grid, .agent-grid, .asset-grid { grid-template-columns: 1fr; }

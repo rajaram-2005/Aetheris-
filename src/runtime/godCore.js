@@ -2,11 +2,21 @@ import { ConversationPlane } from './conversation.js'
 import { createMultimodalPlan } from './multimodal.js'
 import { ModelRouter } from './router.js'
 import { createExecutionGraph, NODE_STATUS } from './taskGraph.js'
-import { PLANE_DEFINITIONS, TOOL_DEFINITIONS } from './registry.js'
+import { PLANE_DEFINITIONS, ARCHITECTURE_PHASES, MODEL_DEFINITIONS } from './registry.js'
+import { KnowledgeFabric } from './knowledgeFabric.js'
+import { MemoryFabric } from './memoryFabric.js'
+import { MetaLearningEngine } from './metaLearning.js'
+import { ToolFabric } from './toolFabric.js'
+import { ComputerControlLoop } from './computerControl.js'
 
 export class GodCore {
   constructor({ projectId = 'aetheris-core', projectName = 'Aetheris / Core', online = false, emit = () => {} } = {}) {
     this.emit = emit
+    this.knowledge = new KnowledgeFabric()
+    this.memory = new MemoryFabric({ knowledge: this.knowledge })
+    this.metaLearning = new MetaLearningEngine({ memory: this.memory })
+    this.tools = new ToolFabric({ online })
+    this.computer = new ComputerControlLoop({ tools: this.tools })
     this.conversation = new ConversationPlane({ projectId, projectName })
     this.router = new ModelRouter({ online })
     this.tasks = new Map()
@@ -15,22 +25,34 @@ export class GodCore {
 
   setOnline(online) {
     this.router.setOnline(online)
+    this.tools.setOnline(online)
     this.emit({ type: 'runtime.network', online: this.router.online })
   }
 
   submit(request, options = {}) {
     const understanding = this.conversation.understand(request)
-    const context = this.conversation.loadContext(options.context)
+    const memoryContext = this.memory.contextFor(understanding.text)
+    const knowledgeEvidence = this.knowledge.search(understanding.text)
+    const context = this.conversation.loadContext({
+      ...options.context,
+      memory: memoryContext,
+      knowledge: knowledgeEvidence,
+    })
     const multimodal = createMultimodalPlan(understanding)
     const routes = this.router.route(understanding, multimodal)
     const policy = evaluatePolicy(understanding, { online: this.router.online, ...options })
+    const toolPlan = this.tools.plan(understanding, { approved: options.approved })
+    const computerPlan = understanding.intent === 'computer-control' ? this.computer.plan(understanding) : null
     const plan = {
-      contextSources: context.memoryRefs.length + 1,
+      contextSources: context.memoryRefs.length + knowledgeEvidence.length + 1,
       understanding,
       routes,
       policy,
       multimodal,
-      tools: resolveTools(routes, understanding),
+      toolPlan,
+      computerPlan,
+      knowledgeEvidence,
+      tools: resolveTools(routes, understanding, toolPlan),
     }
     const graph = createExecutionGraph(plan)
     const task = {
@@ -67,6 +89,9 @@ export class GodCore {
     const task = this.tasks.get(taskId)
     if (!task || task.status !== 'Awaiting approval') return task ? serializeTask(task) : null
     task.status = 'Running'
+    task.plan.toolPlan = this.tools.plan(task.plan.understanding, { approved: true })
+    task.plan.tools = task.plan.toolPlan.map((tool) => tool.toolId)
+    task.tools = task.plan.tools
     task.graph.transition('policy', NODE_STATUS.COMPLETED, { output: 'Approved by user' })
     this.addActivity(task, 'Policy approved by user', 'Execution scope unlocked', 'gold')
     this.emitTask(task, 'task.approved')
@@ -75,7 +100,17 @@ export class GodCore {
   }
 
   execute(task) {
-    const sequence = ['intent', 'context', 'policy', 'planner', ...task.plan.routes.map((_, index) => `agent-${index + 1}`), 'verify', 'synthesize', 'respond']
+    const sequence = [
+      'intent',
+      'context',
+      'policy',
+      'planner',
+      ...task.plan.routes.map((_, index) => `agent-${index + 1}`),
+      ...task.plan.multimodal.stages.map((_, index) => `pipeline-${index + 1}`),
+      'verify',
+      'synthesize',
+      'respond',
+    ]
     const delay = (index) => 220 + (index < 4 ? index * 100 : 180)
 
     // A graph is dependency-aware rather than time-based: each node is started only
@@ -101,8 +136,12 @@ export class GodCore {
         task.status = nodeId === 'respond' ? 'Completed' : 'Running'
         if (nodeId === 'respond') {
           task.checkpoint = 'complete'
+          const evaluation = this.metaLearning.evaluate(task)
+          this.memory.rememberTask(task, evaluation)
+          this.metaLearning.updateStrategy(task, evaluation)
           this.conversation.remember(task)
-          this.conversation.addMessage('assistant', responseFor(task), { taskId: task.id })
+          this.conversation.addMessage('assistant', responseFor(task), { taskId: task.id, evaluation })
+          task.evaluation = evaluation
         }
         this.addActivity(task, activityTitle(node, 'completed'), node.kind === 'agent' ? `${node.label} · ${node.detail}` : node.detail, activityTone(node.kind))
         this.emitTask(task, nodeId === 'respond' ? 'task.completed' : 'task.node-completed')
@@ -121,10 +160,15 @@ export class GodCore {
   snapshot() {
     return {
       planes: PLANE_DEFINITIONS,
+      phases: ARCHITECTURE_PHASES,
       agentsOnline: 42,
       agentCount: 56,
-      modelCount: 8,
-      tools: TOOL_DEFINITIONS,
+      modelCount: MODEL_DEFINITIONS.length,
+      tools: this.tools.snapshot(),
+      knowledge: this.knowledge.snapshot(),
+      memory: this.memory.snapshot(),
+      learning: this.metaLearning.snapshot(),
+      computer: this.computer.plan({ text: '', intent: 'general', modalities: [], risk: {} }),
       tasks: [...this.tasks.values()].map(serializeTask),
       online: this.router.online,
     }
@@ -148,10 +192,13 @@ function evaluatePolicy(understanding, { online }) {
   return { requiresApproval: false, reason: 'Project scope approved' }
 }
 
-function resolveTools(routes, understanding) {
-  const names = new Set()
-  routes.forEach((route) => route.agent.tools.forEach((tool) => names.add(tool)))
-  if (understanding.intent === 'engineering') names.add('simulation')
+function resolveTools(routes, understanding, toolPlan = []) {
+  const names = new Set(toolPlan.filter((tool) => tool.allowed).map((tool) => tool.toolId))
+  const allowed = new Set(names)
+  routes.forEach((route) => route.agent.tools.forEach((tool) => {
+    if (!toolPlan.length || allowed.has(tool)) names.add(tool)
+  }))
+  if (understanding.intent === 'engineering' && (!toolPlan.length || allowed.has('simulation'))) names.add('simulation')
   return [...names]
 }
 
@@ -182,6 +229,7 @@ function activityTitle(node, phase) {
   if (node.id === 'planner') return `Task planner ${phase}`
   if (node.id === 'verify') return `Verification ${phase}`
   if (node.id === 'synthesize') return `Arbitration ${phase}`
+  if (node.kind === 'pipeline') return `${node.label} ${phase}`
   return `Response ${phase}`
 }
 
@@ -197,11 +245,12 @@ function outputFor(node, task) {
   if (node.id === 'context') return `${task.plan.contextSources} memory references`
   if (node.id === 'policy') return task.plan.policy.reason
   if (node.kind === 'agent') return `${node.label} produced a verified intermediate result`
+  if (node.kind === 'pipeline') return `${node.label} produced ${node.detail}`
   if (node.id === 'verify') return 'Factual, logical, technical, safety, and quality checks passed'
-  if (node.id === 'synthesize') return `Synthesized ${task.plan.multimodal.output} response`
+  if (node.id === 'synthesize') return `Synthesized ${task.plan.multimodal.artifact} response`
   return 'Response ready'
 }
 
 function responseFor(task) {
-  return `RUN ${task.id} completed. God Core routed ${task.agents} specialists through ${task.plan.multimodal.stages.length} ${task.plan.multimodal.output} stages and verified the result locally.`
+  return `RUN ${task.id} completed. God Core routed ${task.agents} specialists through the ${task.plan.multimodal.label} and verified the ${task.plan.multimodal.artifact} locally.`
 }

@@ -16,6 +16,19 @@ export const PLANE_DEFINITIONS = [
   { id: 'hardware', number: '12', name: 'Hardware / infrastructure plane', role: 'Runtime resources and devices', status: 'online' },
 ]
 
+export const ARCHITECTURE_PHASES = [
+  { id: 'image-pipeline', number: '11', name: 'Image pipeline', role: 'Plan, generate, critique, revise' },
+  { id: 'video-pipeline', number: '12', name: 'Video pipeline', role: 'Script, storyboard, render, edit' },
+  { id: 'audio-pipeline', number: '13', name: 'Audio pipeline', role: 'Voice, music, mix, master' },
+  { id: '3d-pipeline', number: '14', name: '3D pipeline', role: 'Geometry, materials, rig, render' },
+  { id: 'document-factory', number: '15', name: 'Document factory', role: 'Outline, content, figures, export' },
+  { id: 'memory-fabric', number: '16', name: 'Memory fabric', role: 'Working, episodic, semantic, procedural' },
+  { id: 'knowledge-fabric', number: '17', name: 'Knowledge fabric', role: 'Ingest, parse, vector, graph, RAG' },
+  { id: 'meta-learning', number: '18', name: 'Meta-learning', role: 'Evaluate outcomes, update strategies' },
+  { id: 'tool-fabric', number: '19', name: 'Universal tool fabric', role: 'Permissioned files, terminal, APIs, devices' },
+  { id: 'computer-control', number: '20', name: 'Chat → computer control', role: 'Observe, act, compare, verify' },
+]
+
 export const AGENT_GROUPS = [
   { id: 'intelligence', name: 'Intelligence', agents: ['Reasoning', 'Planning', 'Problem Solving', 'Strategy', 'Critique', 'Verification', 'Meta-Learning'] },
   { id: 'software', name: 'Software & digital engineering', agents: ['Software Architecture', 'Programming', 'Debugging', 'Testing', 'DevOps', 'Database', 'Cybersecurity'] },
@@ -45,7 +58,9 @@ export const MODEL_DEFINITIONS = [
   { id: 'whisper-large-v3', name: 'Whisper Large v3', type: 'asr', quantization: 'FP16', sizeGb: 3.1, modalities: ['audio'], capabilities: ['transcription', 'speech'], local: true, status: 'standby', latencyMs: 260 },
   { id: 'sdxl-lightning', name: 'SDXL Lightning', type: 'image', quantization: 'FP16', sizeGb: 6.6, modalities: ['text', 'image'], capabilities: ['image-generation', 'diagram-generation'], local: true, status: 'available', latencyMs: 8400 },
   { id: 'local-video-pipeline', name: 'Local Video Pipeline', type: 'video', quantization: 'mixed', sizeGb: 11.4, modalities: ['text', 'image', 'video', 'audio'], capabilities: ['video-generation', 'storyboard', 'editing'], local: true, status: 'available', latencyMs: 18000 },
+  { id: 'local-3d-pipeline', name: 'Local 3D Pipeline', type: '3d', quantization: 'mixed', sizeGb: 8.8, modalities: ['text', 'image', '3d'], capabilities: ['geometry', 'materials', 'rigging', 'render'], local: true, status: 'available', latencyMs: 14000 },
   { id: 'local-audio-pipeline', name: 'Local Audio Pipeline', type: 'audio', quantization: 'mixed', sizeGb: 4.2, modalities: ['text', 'audio'], capabilities: ['tts', 'music', 'sound-effects'], local: true, status: 'available', latencyMs: 3200 },
+
   { id: 'document-factory', name: 'Document Factory', type: 'specialized', quantization: 'mixed', sizeGb: 2.4, modalities: ['text', 'structured'], capabilities: ['pdf', 'docx', 'pptx', 'xlsx', 'formatting'], local: true, status: 'available', latencyMs: 1300 },
 ]
 

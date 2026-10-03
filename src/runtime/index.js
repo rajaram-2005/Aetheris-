@@ -30,3 +30,8 @@ export function createAetherisRuntime(options = {}) {
 export * from './registry.js'
 export * from './taskGraph.js'
 export * from './multimodal.js'
+export * from './knowledgeFabric.js'
+export * from './memoryFabric.js'
+export * from './metaLearning.js'
+export * from './toolFabric.js'
+export * from './computerControl.js'
