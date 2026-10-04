@@ -124,6 +124,7 @@ export class GodCore {
       'aetheris.phases.plan': (args) => this.phaseEngine.plan(args || {}),
       'aetheris.phases.observe': (args) => this.phaseEngine.observe(args.taskId),
       'aetheris.phases.advance': (args) => this.phaseEngine.step(args.taskId),
+      'aetheris.phases.run_all': (args) => this.phaseEngine.runToCompletion(args.taskId, { delay: args.delay || 18 }),
       'aetheris.knowledge.search': (args) => this.knowledge.search(args.query || '', args.options || {}),
       'aetheris.knowledge.ingest': (args) => this.knowledge.ingest(args.source || args),
       'aetheris.knowledge.plan': (args) => this.openSourceKnowledge.plan(args || {}),
@@ -190,7 +191,7 @@ export class GodCore {
     const modelKnowledgePlan = this.modelKnowledge.plan({ query: understanding.text, offline: !this.network.online })
     const openSourceKnowledgePlan = /knowledge|research|rag|citation|source|document/i.test(understanding.text) || ['research', 'document'].includes(understanding.intent) ? this.openSourceKnowledge.plan({ query: understanding.text }) : null
     const nativePlan = this.nativeIntelligence.plan({ intent: understanding.intent, text: understanding.text, output: createMultimodalPlan(understanding).output })
-    const phasePlan = this.phaseEngine.plan({ intent: understanding.intent, text: understanding.text, output: createMultimodalPlan(understanding).output, complexity: understanding.complexity })
+    const phasePlan = this.phaseEngine.plan({ intent: understanding.intent, text: understanding.text, output: createMultimodalPlan(understanding).output, complexity: understanding.complexity, fullRun: Boolean(options.fullPhaseRun) })
     const offlineMemoryPlan = this.offlineMemory.status()
     const mcpPlan = this.mcp.planForIntent(understanding)
     const mcpHandshake = this.mcp.call('aetheris.core.plan_task', { request: understanding.text }, { approved: true })
@@ -316,6 +317,7 @@ export class GodCore {
       createdAt: new Date().toISOString(),
       activity: [],
       checkpoint: 'intent',
+      fullPhaseRun: Boolean(options.fullPhaseRun),
     }
 
     task.plan.dataRefs.relational = `tasks/${task.id}`
@@ -339,9 +341,11 @@ export class GodCore {
       task.checkpoint = 'policy'
       this.taskState.update(task.id, { status: 'Awaiting approval', checkpoint: 'policy' })
       this.executionLoop.fail(task.id, policy.reason)
+      this.phaseEngine.pause(task.id)
       this.emitTask(task, 'task.awaiting-approval')
     } else {
       this.execute(task)
+      this.phaseEngine.runToCompletion(task.id, { delay: task.fullPhaseRun ? 18 : 32 })
     }
     return serializeTask(task)
   }
@@ -365,6 +369,7 @@ export class GodCore {
     this.addActivity(task, 'Policy approved by user', 'Execution scope unlocked', 'gold')
     this.emitTask(task, 'task.approved')
     this.execute(task)
+    this.phaseEngine.runToCompletion(task.id, { delay: task.fullPhaseRun ? 18 : 32 })
     return serializeTask(task)
   }
 
@@ -455,7 +460,6 @@ export class GodCore {
         task.graph.transition(nodeId, NODE_STATUS.COMPLETED, { output: outputFor(node, task) })
         this.executionLoop.transition(task.id, loopStageForNode(nodeId), 'completed')
         this.taskState.checkpoint(task.id, nodeId, { status: 'Running' })
-        this.phaseEngine.advance(task.id, { checkpoint: nodeId })
         this.observability.record(task.id, 'node.completed', { nodeId, kind: node.kind, label: node.label })
         task.progress = Math.round((task.graph.completedCount() / task.graph.nodes.size) * 100)
         task.status = nodeId === 'respond' ? 'Completed' : 'Running'
@@ -484,7 +488,6 @@ export class GodCore {
           task.offlineMemory = { update: offlineUpdate, flush: memoryFlush }
           task.media = mediaJob
           this.taskState.complete(task.id, { status: 'Completed', verification: verification.status, outputs: [responseFor(task)] })
-          this.phaseEngine.complete(task.id)
           this.executionLoop.complete(task.id)
           this.projectContext.addConversation('aetheris-core', { role: 'assistant', content: responseFor(task), taskId: task.id })
         }

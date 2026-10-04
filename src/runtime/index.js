@@ -122,6 +122,9 @@ export function createAetherisRuntime(options = {}) {
     advancePhase(taskId) {
       return godCore.phaseEngine.step(taskId)
     },
+    runAllPhases(taskId, options = {}) {
+      return godCore.phaseEngine.runToCompletion(taskId, options)
+    },
     planOfflineMedia(payload) {
       return godCore.offlineMedia.plan(payload)
     },
@@ -207,6 +210,7 @@ export * from './mcpFabric.js'
 export * from './openSourceKnowledge.js'
 export * from './codingAgent.js'
 export * from './phaseEngine.js'
+export * from './phaseExecution.js'
 export * from './nativeIntelligence.js'
 export * from './inputReception.js'
 export * from './languageDetection.js'

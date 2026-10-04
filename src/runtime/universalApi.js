@@ -35,6 +35,7 @@ export class UniversalApi {
     else if (known && route === '/health') data = this.runtime?.health() || { status: 'adapter-ready', route }
     else if (known && route === '/architecture') data = { phases: this.runtime?.phaseEngine?.snapshot(), nativeIntelligence: this.runtime?.nativeIntelligence?.snapshot() }
     else if (known && route === '/phases' && body.action === 'advance') data = this.runtime?.phaseEngine?.step(body.taskId) || {}
+    else if (known && route === '/phases' && body.action === 'run') data = this.runtime?.phaseEngine?.runToCompletion(body.taskId, { delay: body.delay || 18 }) || {}
     else if (known && route === '/phases' && body.taskId) data = this.runtime?.phaseEngine?.observe(body.taskId) || {}
     else if (known && route === '/phases') data = this.runtime?.phaseEngine?.plan(body || {}) || {}
     else if (known) data = { status: 'adapter-ready', route }

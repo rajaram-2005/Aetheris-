@@ -1,3 +1,5 @@
+import { phaseOperation } from './phaseExecution.js'
+
 const GROUPS = [
   ['conversation-intent', 'Part I — Conversation & intent', 1, 10, 'mint'],
   ['god-core-planning', 'Part II — God Core planning', 11, 20, 'violet'],
@@ -73,8 +75,8 @@ export class PhaseEngine {
     this.runs = new Map()
   }
 
-  plan({ intent = 'general', text = '', output = 'text', complexity = 'medium' } = {}) {
-    const active = activePhaseNumbers({ intent, text, output })
+  plan({ intent = 'general', text = '', output = 'text', complexity = 'medium', fullRun = false } = {}) {
+    const active = fullRun ? new Set(range(1, 150)) : activePhaseNumbers({ intent, text, output })
     const phases = UNIVERSAL_PHASES.map((phase) => ({ ...phase, status: active.has(phase.number) ? 'queued' : 'not-applicable' }))
     const groups = PHASE_GROUPS.map((group) => {
       const groupPhases = phases.filter((phase) => phase.groupId === group.id)
@@ -86,6 +88,7 @@ export class PhaseEngine {
       intent,
       output,
       complexity,
+      fullRun,
       phases,
       groups,
       parallelTracks: groups.filter((group) => group.active > 1).map((group) => group.id),
@@ -97,7 +100,7 @@ export class PhaseEngine {
   start(taskId, plan) {
     const active = plan.phases.filter((phase) => phase.status === 'queued').map((phase) => phase.number)
     const phases = plan.phases.map((phase) => ({ ...phase, status: active.includes(phase.number) ? (phase.number === active[0] ? 'running' : 'queued') : 'not-applicable' }))
-    const run = { taskId, totalPhases: 150, activePhases: active.length, completed: [], current: active[0] || null, currentPhase: phases.find((phase) => phase.number === active[0]) || null, phases, status: 'running', startedAt: new Date().toISOString(), updatedAt: new Date().toISOString(), progress: 0 }
+    const run = { taskId, totalPhases: 150, activePhases: active.length, completed: [], actions: [], current: active[0] || null, currentPhase: phases.find((phase) => phase.number === active[0]) || null, phases, status: 'running', startedAt: new Date().toISOString(), updatedAt: new Date().toISOString(), progress: 0, autoRunning: false, autoRequested: false, stepDelay: 32 }
     this.runs.set(taskId, run)
     this.emit({ type: 'phase-engine.started', run: this.publicRun(run) })
     return run
@@ -112,6 +115,7 @@ export class PhaseEngine {
       currentPhase.status = 'completed'
       currentPhase.completedAt = new Date().toISOString()
       if (!run.completed.includes(currentNumber)) run.completed.push(currentNumber)
+      run.actions.push({ phase: currentPhase.number, id: currentPhase.id, name: currentPhase.name, domain: currentPhase.domain, operation: phaseOperation(currentPhase), status: 'completed', completedAt: currentPhase.completedAt })
     }
     const nextPhase = run.phases.find((phase) => phase.status === 'queued')
     if (nextPhase) {
@@ -136,6 +140,34 @@ export class PhaseEngine {
     return this.advance(taskId, { checkpoint: 'manual-phase-step' })
   }
 
+  runToCompletion(taskId, { delay = 32 } = {}) {
+    const run = this.runs.get(taskId)
+    if (!run || ['completed', 'cancelled'].includes(run.status)) return run || null
+    if (run.autoRunning) return run
+    run.status = 'running'
+    run.autoRunning = true
+    run.autoRequested = true
+    run.stepDelay = delay
+    const tick = () => {
+      const current = this.runs.get(taskId)
+      if (!current || !current.autoRunning || current.status !== 'running') return
+      if (!current.currentPhase) {
+        current.autoRunning = false
+        this.complete(taskId)
+        return
+      }
+      this.advance(taskId, { checkpoint: `phase-${String(current.currentPhase.number).padStart(3, '0')}` })
+      const after = this.runs.get(taskId)
+      if (after?.currentPhase) setTimeout(tick, after.stepDelay)
+      else {
+        after.autoRunning = false
+        this.complete(taskId)
+      }
+    }
+    setTimeout(tick, 0)
+    return run
+  }
+
   complete(taskId) {
     const run = this.runs.get(taskId)
     if (!run) return null
@@ -143,6 +175,7 @@ export class PhaseEngine {
     run.completed = run.phases.filter((phase) => phase.status === 'completed').map((phase) => phase.number)
     run.current = null
     run.currentPhase = null
+    run.autoRunning = false
     run.status = 'completed'
     run.progress = 100
     run.completedAt = new Date().toISOString()
@@ -152,19 +185,24 @@ export class PhaseEngine {
 
   pause(taskId) {
     const run = this.runs.get(taskId)
-    if (run) { run.status = 'paused'; run.updatedAt = new Date().toISOString(); this.emit({ type: 'phase-engine.paused', run: this.publicRun(run) }) }
+    if (run) { run.status = 'paused'; run.autoRunning = false; run.updatedAt = new Date().toISOString(); this.emit({ type: 'phase-engine.paused', run: this.publicRun(run) }) }
     return run || null
   }
 
   resume(taskId) {
     const run = this.runs.get(taskId)
-    if (run) { run.status = 'running'; run.updatedAt = new Date().toISOString(); this.emit({ type: 'phase-engine.resumed', run: this.publicRun(run) }) }
+    if (run) {
+      run.status = 'running'
+      run.updatedAt = new Date().toISOString()
+      this.emit({ type: 'phase-engine.resumed', run: this.publicRun(run) })
+      if (run.autoRequested) this.runToCompletion(taskId, { delay: run.stepDelay })
+    }
     return run || null
   }
 
   cancel(taskId) {
     const run = this.runs.get(taskId)
-    if (run) { run.status = 'cancelled'; run.updatedAt = new Date().toISOString(); this.emit({ type: 'phase-engine.cancelled', run: this.publicRun(run) }) }
+    if (run) { run.status = 'cancelled'; run.autoRunning = false; run.updatedAt = new Date().toISOString(); this.emit({ type: 'phase-engine.cancelled', run: this.publicRun(run) }) }
     return run || null
   }
 
@@ -174,7 +212,7 @@ export class PhaseEngine {
 
   publicRun(run) {
     if (!run) return null
-    return { ...run, phases: run.phases.map((phase) => ({ ...phase })), completed: [...run.completed], currentPhase: run.currentPhase ? { ...run.currentPhase } : null }
+    return { ...run, phases: run.phases.map((phase) => ({ ...phase })), completed: [...run.completed], actions: run.actions.map((action) => ({ ...action })), currentPhase: run.currentPhase ? { ...run.currentPhase } : null }
   }
 
   snapshot() {
