@@ -51,11 +51,13 @@ import { McpFabric } from './mcpFabric.js'
 import { OpenSourceKnowledgeModel } from './openSourceKnowledge.js'
 import { PhaseEngine } from './phaseEngine.js'
 import { NativeIntelligenceFabric } from './nativeIntelligence.js'
+import { InputReception } from './inputReception.js'
 
 export class GodCore {
   constructor({ projectId = 'aetheris-core', projectName = 'Aetheris / Core', online = false, emit = () => {} } = {}) {
     this.emit = emit
     this.system = new SystemAbstraction()
+    this.inputReception = new InputReception({ emit })
     this.security = new SecurityPolicy({ online })
     this.knowledge = new KnowledgeFabric()
     this.memory = new MemoryFabric({ knowledge: this.knowledge })
@@ -113,6 +115,7 @@ export class GodCore {
       'aetheris.core.pause_task': (args) => this.pause(args.taskId, args.reason),
       'aetheris.core.resume_task': (args) => this.resume(args.taskId),
       'aetheris.core.cancel_task': (args) => this.cancel(args.taskId, args.reason),
+      'aetheris.experience.receive_input': (args, context) => this.inputReception.receive(args.input || args, { source: context.source || 'mcp', sessionId: context.sessionId }),
       'aetheris.native.discover': (args) => this.nativeIntelligence.discover(args || {}),
       'aetheris.native.plan': (args) => this.nativeIntelligence.plan(args || {}),
       'aetheris.phases.plan': (args) => this.phaseEngine.plan(args || {}),
@@ -174,7 +177,8 @@ export class GodCore {
   }
 
   submit(request, options = {}) {
-    const understanding = this.conversation.understand(request)
+    const input = this.inputReception.receive(request, options.input || {})
+    const understanding = this.conversation.understand(input.text)
     const memoryContext = this.memory.contextFor(understanding.text)
     const knowledgeEvidence = this.knowledge.search(understanding.text)
     const modelKnowledgePlan = this.modelKnowledge.plan({ query: understanding.text, offline: !this.network.online })
@@ -234,6 +238,7 @@ export class GodCore {
     })
     const swarm = this.swarm.compose({ taskId: `pending-${this.taskSequence}`, intent: understanding.intent, routes, complexity: understanding.complexity })
     const plan = {
+      inputReception: { ...input, attachments: input.attachments.map(({ path, ...attachment }) => attachment) },
       contextSources: context.memoryRefs.length + knowledgeEvidence.length + 1,
       system: this.system.snapshot(),
       understanding,
@@ -289,6 +294,7 @@ export class GodCore {
       id: `RUN-${this.taskSequence++}`,
       sessionId: `SESSION-${Date.now().toString(36)}`,
       objective: understanding.text,
+      input,
       intent: understanding.intent,
       status: policy.requiresApproval ? 'Awaiting approval' : 'Running',
       progress: 0,
@@ -313,6 +319,7 @@ export class GodCore {
     })
     this.tasks.set(task.id, task)
     this.phaseEngine.start(task.id, task.plan.phasePlan)
+    this.phaseEngine.advance(task.id, { checkpoint: 'input-reception' })
     this.taskState.create(task)
     this.projectContext.attachTask('aetheris-core', task)
     this.observability.startTask(task)
@@ -492,6 +499,7 @@ export class GodCore {
     const snapshot = this.snapshot()
     const checks = [
       ['control-plane', Boolean(this.conversation && this.router && this.tasks)],
+      ['input-reception', Boolean(this.inputReception)],
       ['execution-plane', Boolean(this.workflow && this.executionLoop && this.observability)],
       ['memory-knowledge', Boolean(this.memory && this.knowledge && this.data)],
       ['multimodal', Boolean(this.creative && this.scientific && this.training)],
@@ -521,6 +529,7 @@ export class GodCore {
       agentCount: 56,
       modelCount: MODEL_DEFINITIONS.length,
       system: this.system.snapshot(),
+      inputReception: this.inputReception.snapshot(),
       security: this.security.snapshot(),
       tools: this.tools.snapshot(),
       terminal: this.terminal.snapshot(),

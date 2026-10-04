@@ -77,7 +77,7 @@ const NAV_ITEMS = [
   { id: 'agents', label: 'Agent fabric', icon: Bot, count: '56' },
   { id: 'models', label: 'Model registry', icon: Cpu },
   { id: 'coding', label: 'Coding agent', icon: Code2, count: 'API' },
-  { id: 'mcp', label: 'MCP toolbox', icon: Cable, count: '54' },
+  { id: 'mcp', label: 'MCP toolbox', icon: Cable, count: '55' },
   { id: 'plugins', label: 'Plugin market', icon: Boxes, count: '12' },
   { id: 'knowledge', label: 'Knowledge', icon: BookOpen },
   { id: 'studio', label: 'Creative studio', icon: Sparkles },

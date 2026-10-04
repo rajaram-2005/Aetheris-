@@ -1,5 +1,6 @@
 export const MCP_SERVERS = [
   { id: 'aetheris.core', name: 'Aetheris Core MCP', plane: 'conversation / cognitive', transport: 'in-process', offline: true },
+  { id: 'aetheris.experience', name: 'Experience Input MCP', plane: 'experience / input', transport: 'in-process', offline: true },
   { id: 'aetheris.native', name: 'Native Intelligence MCP', plane: 'native agents', transport: 'in-process', offline: true },
   { id: 'aetheris.phases', name: '150-Phase Engine MCP', plane: 'lifecycle', transport: 'in-process', offline: true },
   { id: 'aetheris.knowledge', name: 'Knowledge MCP', plane: 'memory / knowledge', transport: 'in-process', offline: true },
@@ -33,6 +34,7 @@ export const MCP_TOOLS = [
   tool('aetheris.core.pause_task', 'Pause task', 'aetheris.core', 'conversation', 2, 'Pause a running task at a safe checkpoint.'),
   tool('aetheris.core.resume_task', 'Resume task', 'aetheris.core', 'conversation', 2, 'Resume a paused task from its last safe checkpoint.'),
   tool('aetheris.core.cancel_task', 'Cancel task', 'aetheris.core', 'conversation', 2, 'Cancel a run and release its local resources.'),
+  tool('aetheris.experience.receive_input', 'Receive input', 'aetheris.experience', 'experience', 0, 'Normalize text, voice, image, video, file, screen, or multimodal input.'),
   tool('aetheris.native.discover', 'Discover native intelligence', 'aetheris.native', 'native', 0, 'Discover first-party Aetheris intelligence contracts.'),
   tool('aetheris.native.plan', 'Plan native intelligence', 'aetheris.native', 'native', 0, 'Select native Aether modules for an intent.'),
   tool('aetheris.phases.plan', 'Plan 150 phases', 'aetheris.phases', 'lifecycle', 0, 'Create a complete 150-phase lifecycle plan.'),

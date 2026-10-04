@@ -7,6 +7,9 @@ export function createAetherisRuntime(options = {}) {
   const codingAgent = new CodingAgentClient({ basePath: options.codingAgentBasePath || '/api/agent' })
 
   return {
+    receiveInput(input, metadata = {}) {
+      return godCore.inputReception.receive(input, metadata)
+    },
     submit(request, context = {}) {
       return godCore.submit(request, context)
     },
@@ -202,3 +205,4 @@ export * from './openSourceKnowledge.js'
 export * from './codingAgent.js'
 export * from './phaseEngine.js'
 export * from './nativeIntelligence.js'
+export * from './inputReception.js'
