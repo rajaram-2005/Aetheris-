@@ -88,11 +88,13 @@ export const MCP_TOOLS = [
 ]
 
 export class McpFabric {
-  constructor({ security, network, handlers = {}, emit = () => {} } = {}) {
+  constructor({ security, network, handlers = {}, emit = () => {}, maxIdempotencyEntries = 300 } = {}) {
     this.security = security
     this.network = network
     this.handlers = handlers
     this.emit = emit
+    this.maxIdempotencyEntries = maxIdempotencyEntries
+    this.idempotency = new Map()
     this.servers = new Map(MCP_SERVERS.map((server) => [server.id, { ...server, status: 'connected' }]))
     this.tools = new Map(MCP_TOOLS.map((entry) => [entry.name, { ...entry }]))
     this.audit = []
@@ -140,9 +142,16 @@ export class McpFabric {
   }
 
   call(name, args = {}, context = {}) {
+    const idempotencyKey = context.idempotencyKey || args.idempotencyKey || null
+    const replayKey = idempotencyKey ? `${context.sessionId || 'local-session'}:${name}:${idempotencyKey}` : null
+    if (replayKey && this.idempotency.has(replayKey)) return { ...this.idempotency.get(replayKey), replayed: true }
     const id = `mcp-${this.sequence++}`
     const entry = this.tools.get(name)
-    if (!entry) return this.publish(this.result(id, name, null, { status: 'not-found', message: 'MCP tool is not registered' }))
+    if (!entry) {
+      const response = this.result(id, name, null, { status: 'not-found', message: 'MCP tool is not registered' })
+      this.rememberIdempotent(replayKey, response)
+      return this.publish(response)
+    }
     const server = this.servers.get(entry.server)
     const onlineBlocked = !server?.offline && !this.network.online
     const needsApproval = entry.level > (this.security.defaultLevel ?? 3) && !context.approved
@@ -151,6 +160,7 @@ export class McpFabric {
       const reason = onlineBlocked ? 'Tool requires APPROVED ONLINE mode' : physical ? 'Tool requires device or industrial authorization' : `Tool requires security level ${entry.level} approval`
       const blocked = this.result(id, name, entry, { status: 'blocked', reason, offline: !this.network.online })
       this.audit.unshift(blocked)
+      this.rememberIdempotent(replayKey, blocked)
       return this.publish(blocked)
     }
     let data = { status: 'adapter-ready', tool: name, args }
@@ -161,7 +171,14 @@ export class McpFabric {
     const response = this.result(id, name, entry, data)
     this.audit.unshift(response)
     this.audit = this.audit.slice(0, 300)
+    this.rememberIdempotent(replayKey, response)
     return this.publish(response)
+  }
+
+  rememberIdempotent(replayKey, response) {
+    if (!replayKey) return
+    this.idempotency.set(replayKey, response)
+    while (this.idempotency.size > this.maxIdempotencyEntries) this.idempotency.delete(this.idempotency.keys().next().value)
   }
 
   publish(response) {
@@ -174,7 +191,7 @@ export class McpFabric {
   }
 
   snapshot() {
-    return { servers: this.servers.size, connectedServers: [...this.servers.values()].filter((server) => server.status === 'connected').length, tools: this.tools.size, auditEvents: this.audit.length, offlineAvailable: this.discover({ offlineOnly: true }).length, serversList: [...this.servers.values()] }
+    return { servers: this.servers.size, connectedServers: [...this.servers.values()].filter((server) => server.status === 'connected').length, tools: this.tools.size, auditEvents: this.audit.length, idempotencyEntries: this.idempotency.size, offlineAvailable: this.discover({ offlineOnly: true }).length, serversList: [...this.servers.values()] }
   }
 }
 

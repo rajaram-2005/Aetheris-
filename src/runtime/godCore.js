@@ -55,7 +55,7 @@ import { InputReception } from './inputReception.js'
 import { LanguageDetection } from './languageDetection.js'
 
 export class GodCore {
-  constructor({ projectId = 'aetheris-core', projectName = 'Aetheris / Core', online = false, emit = () => {} } = {}) {
+  constructor({ projectId = 'aetheris-core', projectName = 'Aetheris / Core', online = false, emit = () => {}, phaseStorage = null, phaseStorageKey = 'aetheris.phase-runs', phaseScheduler = null } = {}) {
     this.emit = emit
     this.system = new SystemAbstraction()
     this.inputReception = new InputReception({ emit })
@@ -85,7 +85,7 @@ export class GodCore {
     this.resourceManager = new ResourceManager()
     this.network = new NetworkMode({ online })
     this.openSourceKnowledge = new OpenSourceKnowledgeModel({ knowledge: this.knowledge, memory: this.memory, network: this.network, emit })
-    this.phaseEngine = new PhaseEngine({ emit })
+    this.phaseEngine = new PhaseEngine({ emit, storage: phaseStorage, storageKey: phaseStorageKey, scheduler: phaseScheduler })
     this.nativeIntelligence = new NativeIntelligenceFabric({ emit })
     this.plugins = new PluginFabric({ network: this.network, security: this.security, emit })
     this.developer = new DeveloperPlatform({ plugins: this.plugins })

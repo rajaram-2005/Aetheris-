@@ -1,3 +1,5 @@
+import { getNativeContract, NATIVE_CONTRACTS, NATIVE_CONTRACT_VERSION, validateNativeRequest } from './nativeContracts.js'
+
 export const NATIVE_INTELLIGENCE = [
   native('aether-code', 'Aether-Code', 'Native software engineering system', 'coding', [21, 40], ['repository discovery', 'architecture reconstruction', 'code generation', 'test and repair']),
   native('aether-research', 'Aether-Research', 'Native research and evidence system', 'research', [51, 60], ['source ranking', 'evidence extraction', 'contradiction detection', 'citation construction']),
@@ -24,7 +26,27 @@ export class NativeIntelligenceFabric {
 
   discover({ query = '', domain } = {}) {
     const value = String(query).toLowerCase()
-    return NATIVE_INTELLIGENCE.filter((module) => (!domain || module.domain === domain) && (!value || `${module.id} ${module.name} ${module.description} ${module.responsibilities.join(' ')}`.toLowerCase().includes(value)))
+    return NATIVE_INTELLIGENCE.filter((module) => (!domain || module.domain === domain) && (!value || `${module.id} ${module.name} ${module.description} ${module.responsibilities.join(' ')}`.toLowerCase().includes(value))).map((module) => this.publicModule(module))
+  }
+
+  contract(moduleId) {
+    return getNativeContract(moduleId)
+  }
+
+  validate(moduleId, operation, input = {}) {
+    return validateNativeRequest(moduleId, operation, input)
+  }
+
+  execute(moduleId, operation, input = {}, { approved = false, sandbox = true } = {}) {
+    const validation = this.validate(moduleId, operation, input)
+    if (!validation.valid) return { ...validation, status: validation.status, provenance: 'native-contract-validation' }
+    if (validation.requiresApproval && !approved) return { ...validation, status: 'approval-required', provenance: 'native-contract-policy' }
+    return { ...validation, status: 'adapter-ready', sandboxed: sandbox, approved: Boolean(approved), provenance: 'native-aetheris-contract', localOnly: true, networkUsed: false, privateReasoningStored: false, output: { operation, accepted: true, providerBoundary: 'replaceable-model-adapter' } }
+  }
+
+  publicModule(module) {
+    const contract = getNativeContract(module.id)
+    return { ...module, contractVersion: contract?.version || NATIVE_CONTRACT_VERSION, operations: contract?.operations || [] }
   }
 
   plan({ intent = 'general', text = '', output = 'text' } = {}) {
@@ -60,11 +82,11 @@ export class NativeIntelligenceFabric {
     if (intent === 'engineering' || /engineering|equation|simulation|physics|electrical|control/i.test(value)) { domains.add('science'); domains.add('engineering') }
     if (/device|iot|robot|sensor/i.test(value)) domains.add('device')
     if (/plc|scada|industrial|factory/i.test(value)) domains.add('industrial')
-    return NATIVE_INTELLIGENCE.filter((module) => domains.has(module.domain)).map((module) => ({ ...module, phaseRange: `${module.phases[0]}–${module.phases[1]}`, status: 'native-contract' }))
+    return NATIVE_INTELLIGENCE.filter((module) => domains.has(module.domain)).map((module) => ({ ...this.publicModule(module), phaseRange: `${module.phases[0]}–${module.phases[1]}`, status: 'native-contract' }))
   }
 
   snapshot() {
-    return { moduleCount: NATIVE_INTELLIGENCE.length, plans: this.plans.length, modules: NATIVE_INTELLIGENCE, principle: 'native Aetheris contracts with pluggable open models' }
+    return { moduleCount: NATIVE_INTELLIGENCE.length, plans: this.plans.length, contractCount: NATIVE_CONTRACTS.length, contractVersion: NATIVE_CONTRACT_VERSION, modules: NATIVE_INTELLIGENCE.map((module) => this.publicModule(module)), contracts: NATIVE_CONTRACTS, principle: 'native Aetheris contracts with pluggable open models' }
   }
 }
 

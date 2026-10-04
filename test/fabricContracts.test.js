@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { MCP_SERVERS, MCP_TOOLS } from '../src/runtime/mcpFabric.js'
+import { NATIVE_CONTRACTS, NATIVE_CONTRACT_VERSION } from '../src/runtime/nativeContracts.js'
 import { NATIVE_INTELLIGENCE } from '../src/runtime/nativeIntelligence.js'
 import { SecurityPolicy } from '../src/runtime/securityPolicy.js'
 import { createAetherisRuntime } from '../src/runtime/index.js'
@@ -16,6 +17,28 @@ test('native intelligence catalog stays distinct from replaceable model provider
   assert.equal(plan.modules.some((module) => module.id === 'aether-code'), true)
   assert.equal(plan.externalModels.includes('pluggable'), true)
   assert.equal(plan.privateReasoningStored, false)
+})
+
+test('versioned native contracts cover every first-party intelligence module', () => {
+  assert.equal(NATIVE_CONTRACTS.length, 15)
+  assert.equal(new Set(NATIVE_CONTRACTS.map((item) => item.id)).size, 15)
+  assert.equal(NATIVE_CONTRACTS.every((item) => item.version === NATIVE_CONTRACT_VERSION), true)
+  assert.equal(NATIVE_CONTRACTS.every((item) => item.localOnly && item.networkUsed === false), true)
+  assert.equal(NATIVE_CONTRACTS.every((item) => item.operations.length >= 4), true)
+
+  const runtime = createAetherisRuntime()
+  const code = runtime.getNativeContract('aether-code')
+  assert.equal(code.requiredInput.includes('repository'), true)
+  assert.equal(runtime.validateNativeContract('aether-code', 'inspect', { repository: 'project-fixture', request: 'map files' }).valid, true)
+  assert.equal(runtime.validateNativeContract('aether-code', 'inspect', {}).status, 'missing-input')
+  assert.equal(runtime.executeNativeContract('aether-code', 'execute', { repository: 'project-fixture', request: 'run' }).status, 'unsupported-operation')
+  assert.equal(runtime.executeNativeContract('aether-code', 'repair', { repository: 'project-fixture', request: 'repair' }).status, 'adapter-ready')
+  assert.equal(runtime.executeNativeContract('aether-device', 'execute', { device: 'fixture-device', telemetry: {} }).status, 'approval-required')
+
+  const api = runtime.request('/native', { method: 'POST', body: { action: 'contract', moduleId: 'aether-research' } })
+  assert.equal(api.status, 200)
+  assert.equal(api.data.id, 'aether-research')
+  assert.equal(api.data.version, NATIVE_CONTRACT_VERSION)
 })
 
 test('MCP fabric exposes all registered in-process servers and tools', () => {

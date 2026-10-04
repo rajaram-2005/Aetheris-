@@ -1,4 +1,5 @@
 import { phaseOperation } from './phaseExecution.js'
+import { PhaseRunSnapshotStore } from './phasePersistence.js'
 
 const GROUPS = [
   ['conversation-intent', 'Part I — Conversation & intent', 1, 10, 'mint'],
@@ -70,10 +71,58 @@ export const UNIVERSAL_PHASES = PHASE_NAMES.map((name, index) => {
 })
 
 export class PhaseEngine {
-  constructor({ emit = () => {} } = {}) {
+  constructor({ emit = () => {}, storage = null, storageKey = 'aetheris.phase-runs', scheduler = null } = {}) {
     this.emit = emit
     this.runs = new Map()
     this.eventSequence = 0
+    this.scheduler = scheduler || { setTimeout: (callback, delay) => setTimeout(callback, delay) }
+    this.snapshotStore = new PhaseRunSnapshotStore({ storage, key: storageKey })
+    this.restore()
+  }
+
+  restore() {
+    const saved = this.snapshotStore.load()
+    this.eventSequence = Math.max(saved.eventSequence || 0, ...saved.runs.flatMap((run) => (run.events || []).map((event) => Number(String(event.id || '').split('-').at(-1)) || 0)))
+    saved.runs.forEach((savedRun) => {
+      const run = normalizeRestoredRun(savedRun)
+      if (run.status === 'running') {
+        run.status = 'paused'
+        run.autoRunning = false
+        run.recoveredFrom = 'running'
+        run.updatedAt = new Date().toISOString()
+        run.checkpointState = { ...(run.checkpointState || {}), name: run.checkpoint || 'recovered', phase: run.current, status: 'paused', reason: 'Recovered after runtime restart', at: run.updatedAt }
+        this.recordEvent(run, 'run.recovered', { phase: run.current, checkpoint: run.checkpoint, recoveredFrom: 'running' })
+      }
+      this.runs.set(run.taskId, run)
+    })
+    if (saved.runs.length) this.persist()
+  }
+
+  persist() {
+    return this.snapshotStore.save({ runs: [...this.runs.values()], eventSequence: this.eventSequence })
+  }
+
+  schedule(run, callback, delay) {
+    try {
+      return this.scheduler.setTimeout(callback, delay)
+    } catch (error) {
+      this.failRun(run.taskId, error)
+      return null
+    }
+  }
+
+  failRun(taskId, error) {
+    const run = this.runs.get(taskId)
+    if (!run || ['completed', 'cancelled', 'failed'].includes(run.status)) return run || null
+    run.status = 'failed'
+    run.autoRunning = false
+    run.updatedAt = new Date().toISOString()
+    run.error = { code: 'PHASE_SCHEDULER_FAILURE', message: error?.message || 'phase scheduler failed' }
+    run.checkpointState = { name: run.checkpoint || 'scheduler-failure', phase: run.current, status: 'failed', at: run.updatedAt }
+    this.recordEvent(run, 'run.failed', { phase: run.current, checkpoint: run.checkpoint, error: run.error })
+    this.persist()
+    this.emit({ type: 'phase-engine.failed', run: this.publicRun(run) })
+    return run
   }
 
   plan({ intent = 'general', text = '', output = 'text', complexity = 'medium', fullRun = false } = {}) {
@@ -109,6 +158,7 @@ export class PhaseEngine {
       run.currentPhase.startedAt = now
       this.recordEvent(run, 'phase.started', { phase: run.currentPhase.number, phaseId: run.currentPhase.id, name: run.currentPhase.name })
     }
+    this.persist()
     this.emit({ type: 'phase-engine.started', run: this.publicRun(run) })
     return run
   }
@@ -142,6 +192,7 @@ export class PhaseEngine {
     run.checkpointState = { name: run.checkpoint, phase: currentNumber || null, status: nextPhase ? 'completed' : 'ready-to-complete', at: run.updatedAt }
     run.progress = Math.round((run.completed.length / Math.max(run.activePhases, 1)) * 100)
     this.recordEvent(run, 'run.advanced', { phase: run.current, checkpoint: run.checkpoint, progress: run.progress })
+    this.persist()
     this.emit({ type: 'phase-engine.advanced', run: this.publicRun(run) })
     return run
   }
@@ -157,7 +208,7 @@ export class PhaseEngine {
 
   runToCompletion(taskId, { delay = 32 } = {}) {
     const run = this.runs.get(taskId)
-    if (!run || ['completed', 'cancelled'].includes(run.status)) return run || null
+    if (!run || ['completed', 'cancelled', 'failed'].includes(run.status)) return run || null
     if (run.autoRunning) return run
     run.status = 'running'
     run.autoRunning = true
@@ -165,29 +216,34 @@ export class PhaseEngine {
     run.stepDelay = delay
     run.updatedAt = new Date().toISOString()
     this.recordEvent(run, 'run.auto-started', { delay })
+    this.persist()
     const tick = () => {
-      const current = this.runs.get(taskId)
-      if (!current || !current.autoRunning || current.status !== 'running') return
-      if (!current.currentPhase) {
-        current.autoRunning = false
-        this.complete(taskId)
-        return
-      }
-      this.advance(taskId, { checkpoint: `phase-${String(current.currentPhase.number).padStart(3, '0')}` })
-      const after = this.runs.get(taskId)
-      if (after?.currentPhase) setTimeout(tick, after.stepDelay)
-      else {
-        after.autoRunning = false
-        this.complete(taskId)
+      try {
+        const current = this.runs.get(taskId)
+        if (!current || !current.autoRunning || current.status !== 'running') return
+        if (!current.currentPhase) {
+          current.autoRunning = false
+          this.complete(taskId)
+          return
+        }
+        this.advance(taskId, { checkpoint: `phase-${String(current.currentPhase.number).padStart(3, '0')}` })
+        const after = this.runs.get(taskId)
+        if (after?.currentPhase) this.schedule(after, tick, after.stepDelay)
+        else {
+          after.autoRunning = false
+          this.complete(taskId)
+        }
+      } catch (error) {
+        this.failRun(taskId, error)
       }
     }
-    setTimeout(tick, 0)
+    this.schedule(run, tick, 0)
     return run
   }
 
   complete(taskId) {
     const run = this.runs.get(taskId)
-    if (!run || ['completed', 'cancelled'].includes(run.status)) return run || null
+    if (!run || ['completed', 'cancelled', 'failed'].includes(run.status)) return run || null
     run.phases.forEach((phase) => { if (phase.status === 'running' || phase.status === 'queued') { phase.status = 'completed'; phase.completedAt = new Date().toISOString() } })
     run.completed = run.phases.filter((phase) => phase.status === 'completed').map((phase) => phase.number)
     run.current = null
@@ -200,6 +256,7 @@ export class PhaseEngine {
     run.checkpoint = 'final-response'
     run.checkpointState = { name: 'final-response', phase: 150, status: 'completed', at: run.completedAt }
     this.recordEvent(run, 'run.completed', { completed: run.completed.length, progress: run.progress })
+    this.persist()
     this.emit({ type: 'phase-engine.completed', run: this.publicRun(run) })
     return run
   }
@@ -212,6 +269,7 @@ export class PhaseEngine {
       run.updatedAt = new Date().toISOString()
       run.checkpointState = { name: run.checkpoint || 'pause-requested', phase: run.current, status: 'paused', reason, at: run.updatedAt }
       this.recordEvent(run, 'run.paused', { phase: run.current, checkpoint: run.checkpoint, reason })
+      this.persist()
       this.emit({ type: 'phase-engine.paused', run: this.publicRun(run) })
     }
     return run || null
@@ -224,6 +282,7 @@ export class PhaseEngine {
       run.updatedAt = new Date().toISOString()
       run.checkpointState = { name: run.checkpoint || 'resume-requested', phase: run.current, status: 'running', at: run.updatedAt }
       this.recordEvent(run, 'run.resumed', { phase: run.current, checkpoint: run.checkpoint })
+      this.persist()
       this.emit({ type: 'phase-engine.resumed', run: this.publicRun(run) })
       if (run.autoRequested) this.runToCompletion(taskId, { delay: run.stepDelay })
     }
@@ -238,6 +297,7 @@ export class PhaseEngine {
       run.updatedAt = new Date().toISOString()
       run.checkpointState = { name: run.checkpoint || 'cancelled', phase: run.current, status: 'cancelled', reason, at: run.updatedAt }
       this.recordEvent(run, 'run.cancelled', { phase: run.current, checkpoint: run.checkpoint, reason })
+      this.persist()
       this.emit({ type: 'phase-engine.cancelled', run: this.publicRun(run) })
     }
     return run || null
@@ -252,10 +312,28 @@ export class PhaseEngine {
     return runs.map((run) => this.publicRun(run))
   }
 
-  history(taskId, { limit = 100 } = {}) {
+  history(taskId, { limit = 100, cursor = 0 } = {}) {
     const run = this.runs.get(taskId)
     if (!run) return null
-    return { taskId, checkpoint: run.checkpoint, checkpointState: run.checkpointState, actions: run.actions.slice(-limit).reverse().map((action) => ({ ...action })), events: run.events.slice(0, limit).map((event) => ({ ...event })) }
+    const pageSize = Math.min(Math.max(Number(limit) || 100, 1), 500)
+    const offset = Math.max(Number(cursor) || 0, 0)
+    const newestActions = run.actions.slice().reverse()
+    const events = run.events.slice(offset, offset + pageSize).map((event) => cloneEvent(event))
+    const actions = newestActions.slice(offset, offset + pageSize).map((action) => ({ ...action }))
+    const total = Math.max(run.events.length, newestActions.length)
+    const nextCursor = offset + pageSize < total ? offset + pageSize : null
+    return { taskId, checkpoint: run.checkpoint, checkpointState: run.checkpointState, actions, events, page: { cursor: offset, limit: pageSize, nextCursor, totalEvents: run.events.length, totalActions: run.actions.length } }
+  }
+
+  exportAudit(taskId, { format = 'json', limit = 500 } = {}) {
+    const run = this.runs.get(taskId)
+    if (!run) return null
+    const payload = { schemaVersion: 1, exportedAt: new Date().toISOString(), taskId, run: this.publicRun(run), history: this.history(taskId, { limit }) }
+    if (format === 'ndjson') {
+      const content = payload.history.events.map((event) => JSON.stringify(event)).join('\n')
+      return { format, content, eventCount: payload.history.events.length, taskId, schemaVersion: payload.schemaVersion }
+    }
+    return { format: 'json', content: JSON.stringify(payload), payload }
   }
 
   recordEvent(run, type, data = {}) {
@@ -282,7 +360,7 @@ export class PhaseEngine {
   snapshot() {
     const runs = [...this.runs.values()]
     const events = runs.flatMap((run) => run.events || []).sort((a, b) => b.time.localeCompare(a.time))
-    return { totalPhases: UNIVERSAL_PHASES.length, groups: PHASE_GROUPS, definitions: UNIVERSAL_PHASES, runs: this.runs.size, activeRuns: runs.filter((run) => run.status === 'running').length, pausedRuns: runs.filter((run) => run.status === 'paused').length, completedRuns: runs.filter((run) => run.status === 'completed').length, eventCount: events.length, recentEvents: events.slice(0, 20), recentRuns: runs.slice(-12).reverse().map((run) => this.publicRun(run)) }
+    return { totalPhases: UNIVERSAL_PHASES.length, groups: PHASE_GROUPS, definitions: UNIVERSAL_PHASES, runs: this.runs.size, activeRuns: runs.filter((run) => run.status === 'running').length, pausedRuns: runs.filter((run) => run.status === 'paused').length, completedRuns: runs.filter((run) => run.status === 'completed').length, failedRuns: runs.filter((run) => run.status === 'failed').length, eventCount: events.length, recentEvents: events.slice(0, 20).map((event) => cloneEvent(event)), recentRuns: runs.slice(-12).reverse().map((run) => this.publicRun(run)), persistence: { version: 1, available: Boolean(this.snapshotStore.storage), key: this.snapshotStore.key } }
   }
 }
 
@@ -303,6 +381,25 @@ function activePhaseNumbers({ intent, text, output }) {
 
 function range(start, end) {
   return Array.from({ length: end - start + 1 }, (_, index) => start + index)
+}
+
+function cloneEvent(event) {
+  return { ...event, data: { ...(event.data || {}) } }
+}
+
+function normalizeRestoredRun(run) {
+  const phases = Array.isArray(run.phases) ? run.phases.map((phase) => ({ ...phase })) : []
+  const currentPhase = phases.find((phase) => phase.number === run.current) || null
+  return {
+    ...run,
+    phases,
+    completed: Array.isArray(run.completed) ? [...run.completed] : phases.filter((phase) => phase.status === 'completed').map((phase) => phase.number),
+    actions: Array.isArray(run.actions) ? run.actions.map((action) => ({ ...action })) : [],
+    events: Array.isArray(run.events) ? run.events.map(cloneEvent) : [],
+    currentPhase,
+    autoRunning: false,
+    autoRequested: Boolean(run.autoRequested),
+  }
 }
 
 function slugify(value) {

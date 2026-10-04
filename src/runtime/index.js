@@ -113,6 +113,15 @@ export function createAetherisRuntime(options = {}) {
     discoverNativeIntelligence(options = {}) {
       return godCore.nativeIntelligence.discover(options)
     },
+    getNativeContract(moduleId) {
+      return godCore.nativeIntelligence.contract(moduleId)
+    },
+    validateNativeContract(moduleId, operation, input = {}) {
+      return godCore.nativeIntelligence.validate(moduleId, operation, input)
+    },
+    executeNativeContract(moduleId, operation, input = {}, options = {}) {
+      return godCore.nativeIntelligence.execute(moduleId, operation, input, options)
+    },
     planPhases(options = {}) {
       return godCore.phaseEngine.plan(options)
     },
@@ -130,6 +139,33 @@ export function createAetherisRuntime(options = {}) {
     },
     phaseRunHistory(taskId, options = {}) {
       return godCore.phaseEngine.history(taskId, options)
+    },
+    exportPhaseAudit(taskId, options = {}) {
+      return godCore.phaseEngine.exportAudit(taskId, options)
+    },
+    defineWorkflow(workflow) {
+      return godCore.workflow.define(workflow)
+    },
+    startWorkflow(workflowId, context = {}) {
+      return godCore.workflow.start(workflowId, context)
+    },
+    observeWorkflow(runId) {
+      return godCore.workflow.observe(runId)
+    },
+    advanceWorkflow(runId, nodeId) {
+      return godCore.workflow.advance(runId, nodeId)
+    },
+    completeWorkflowNode(runId, nodeId, output) {
+      return godCore.workflow.completeNode(runId, nodeId, output)
+    },
+    pauseWorkflow(runId, reason) {
+      return godCore.workflow.pause(runId, reason)
+    },
+    resumeWorkflow(runId) {
+      return godCore.workflow.resume(runId)
+    },
+    cancelWorkflow(runId, reason) {
+      return godCore.workflow.cancel(runId, reason)
     },
     pausePhaseRun(taskId, reason) {
       return godCore.phaseEngine.pause(taskId, reason)
@@ -229,6 +265,8 @@ export * from './openSourceKnowledge.js'
 export * from './codingAgent.js'
 export * from './phaseEngine.js'
 export * from './phaseExecution.js'
+export * from './phasePersistence.js'
 export * from './nativeIntelligence.js'
+export * from './nativeContracts.js'
 export * from './inputReception.js'
 export * from './languageDetection.js'

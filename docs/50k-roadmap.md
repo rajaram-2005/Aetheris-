@@ -87,4 +87,12 @@ The command counts tracked source, test, and documentation files under `src`, `s
 
 ## Current increment
 
-This increment implements Gate 1's foundation: the test command, shared asynchronous assertions, phase-engine contracts, language/input contracts, runtime/API contracts, task lifecycle contracts, MCP/native/security contracts, and this roadmap. The next increment should deepen recovery and persistence rather than add arbitrary code volume.
+Gate 1 is complete: the test command, shared asynchronous assertions, phase-engine contracts, language/input contracts, runtime/API contracts, task lifecycle contracts, MCP/native/security contracts, and this roadmap are covered offline.
+
+The continuous roadmap run has also completed the first implementation slice of Gates 2–4:
+
+- Gate 2: versioned phase snapshots, restart recovery, bounded event history, paginated history, JSON/NDJSON audit export, scheduler fault handling, API/MCP idempotency, and malformed-storage handling.
+- Gate 3: versioned native Aetheris capability contracts for all 15 first-party modules, input validation, approval gates, adapter-boundary execution results, and `/native` API access.
+- Gate 4: validated workflow DAGs with retries, timeouts, compensation planning, checkpoints, approval, pause/resume/cancel, recovery, and controlled workflow API transitions.
+
+The remaining gates continue in the same order with the quality suite running after each increment; no line-count padding is used.

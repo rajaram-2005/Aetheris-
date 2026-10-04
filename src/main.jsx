@@ -700,11 +700,26 @@ function ObservabilityView({ runtime, runtimeSnapshot, onNotify }) {
       cancel: `${selectedRun.taskId} was cancelled and marked in the ledger.`,
       advance: `${selectedRun.taskId} advanced exactly one phase.`,
     }
-    if (action === 'pause') runtime.pauseTask(selectedRun.taskId, 'Paused from observability console')
-    if (action === 'resume') runtime.resumeTask(selectedRun.taskId)
-    if (action === 'cancel') runtime.cancelTask(selectedRun.taskId, 'Cancelled from observability console')
+    const taskExists = Boolean(runtime.getTask(selectedRun.taskId))
+    if (action === 'pause') taskExists ? runtime.pauseTask(selectedRun.taskId, 'Paused from observability console') : runtime.pausePhaseRun(selectedRun.taskId, 'Paused from observability console')
+    if (action === 'resume') taskExists ? runtime.resumeTask(selectedRun.taskId) : runtime.resumePhaseRun(selectedRun.taskId)
+    if (action === 'cancel') taskExists ? runtime.cancelTask(selectedRun.taskId, 'Cancelled from observability console') : runtime.cancelPhaseRun(selectedRun.taskId, 'Cancelled from observability console')
     if (action === 'advance') runtime.advancePhase(selectedRun.taskId)
     notify(labels[action], details[action])
+  }
+  const exportRun = () => {
+    if (!selectedRun) return
+    const audit = runtime.exportPhaseAudit(selectedRun.taskId, { format: 'ndjson', limit: 500 })
+    if (typeof window !== 'undefined' && audit?.content) {
+      const blob = new Blob([audit.content], { type: 'application/x-ndjson' })
+      const url = URL.createObjectURL(blob)
+      const anchor = document.createElement('a')
+      anchor.href = url
+      anchor.download = `${selectedRun.taskId.toLowerCase()}-phase-audit.ndjson`
+      anchor.click()
+      URL.revokeObjectURL(url)
+    }
+    notify('Audit export ready', `${selectedRun.taskId} event history exported locally.`)
   }
   const selectedEvents = selectedRun?.events || []
   const selectedActions = selectedRun?.actions || []
@@ -727,7 +742,7 @@ function ObservabilityView({ runtime, runtimeSnapshot, onNotify }) {
         <PanelHeader eyebrow="RUN SELECTOR / RESUMABLE LEDGER" title={selectedRun ? `${selectedRun.taskId} · ${runStatus}` : 'No phase run yet'} action={`${runs.length} recent runs`} />
         <div className="observability-runs-body">
           <div className="observability-run-list">{runs.length ? runs.map((run) => <button key={run.taskId} className={`observability-run-row ${selectedRun?.taskId === run.taskId ? 'selected' : ''}`} onClick={() => setSelectedId(run.taskId)}><span className={`observability-run-state ${run.status}`}><StatusDot tone={phaseTone(run.status)} pulse={run.status === 'running'} />{formatRunStatus(run.status)}</span><strong>{run.taskId}</strong><span>{run.completed?.length || 0}/{run.activePhases || 0} phases</span><b>{run.progress || 0}%</b><ChevronRight size={14} /></button>) : <div className="observability-empty"><CircleDashed size={20} /><strong>Waiting for a phase run</strong><span>Start a monitored full run to populate the live ledger.</span></div>}</div>
-          <div className="observability-run-controls"><div className="observability-control-copy"><span className="panel-eyebrow">SELECTED CHECKPOINT</span><strong>{selectedRun?.checkpoint || '—'}</strong><span>{selectedRun?.updatedAt ? `updated ${formatEventTime(selectedRun.updatedAt)}` : 'No checkpoint is active'}</span></div><div className="observability-control-buttons"><button className="secondary-button" onClick={() => controlRun('pause')} disabled={!canPause}><Pause size={14} /> Pause</button><button className="primary-small" onClick={() => controlRun('resume')} disabled={!canResume}><Play size={14} /> Resume</button><button className="secondary-button" onClick={() => controlRun('advance')} disabled={!canAdvance}><ArrowRight size={14} /> Step</button><button className="danger-button" onClick={() => controlRun('cancel')} disabled={!selectedRun || ['completed', 'cancelled'].includes(selectedRun.status)}><X size={14} /> Cancel</button></div></div>
+          <div className="observability-run-controls"><div className="observability-control-copy"><span className="panel-eyebrow">SELECTED CHECKPOINT</span><strong>{selectedRun?.checkpoint || '—'}</strong><span>{selectedRun?.updatedAt ? `updated ${formatEventTime(selectedRun.updatedAt)}` : 'No checkpoint is active'}</span></div><div className="observability-control-buttons"><button className="secondary-button" onClick={() => controlRun('pause')} disabled={!canPause}><Pause size={14} /> Pause</button><button className="primary-small" onClick={() => controlRun('resume')} disabled={!canResume}><Play size={14} /> Resume</button><button className="secondary-button" onClick={() => controlRun('advance')} disabled={!canAdvance}><ArrowRight size={14} /> Step</button><button className="danger-button" onClick={() => controlRun('cancel')} disabled={!selectedRun || ['completed', 'cancelled'].includes(selectedRun.status)}><X size={14} /> Cancel</button><button className="secondary-button" onClick={exportRun} disabled={!selectedRun}><FileText size={14} /> Export</button></div></div>
         </div>
       </section>
       <div className="observability-main-grid">
