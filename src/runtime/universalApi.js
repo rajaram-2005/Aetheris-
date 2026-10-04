@@ -1,5 +1,5 @@
 export const API_ROUTES = [
-  '/chat', '/input', '/language', '/tasks', '/agents', '/models', '/memory', '/knowledge', '/files', '/vision', '/audio', '/image', '/video', '/3d', '/tools', '/mcp', '/workflows', '/apps', '/terminal', '/browser', '/devices', '/simulation', '/evaluate', '/plugins', '/health', '/architecture', '/phases',
+  '/chat', '/input', '/language', '/tasks', '/agents', '/models', '/memory', '/knowledge', '/files', '/vision', '/audio', '/image', '/video', '/3d', '/tools', '/mcp', '/workflows', '/apps', '/terminal', '/browser', '/devices', '/simulation', '/evaluate', '/plugins', '/health', '/architecture', '/phases', '/observability',
 ]
 
 export class UniversalApi {
@@ -36,8 +36,15 @@ export class UniversalApi {
     else if (known && route === '/architecture') data = { phases: this.runtime?.phaseEngine?.snapshot(), nativeIntelligence: this.runtime?.nativeIntelligence?.snapshot() }
     else if (known && route === '/phases' && body.action === 'advance') data = this.runtime?.phaseEngine?.step(body.taskId) || {}
     else if (known && route === '/phases' && body.action === 'run') data = this.runtime?.phaseEngine?.runToCompletion(body.taskId, { delay: body.delay || 18 }) || {}
+    else if (known && route === '/phases' && body.action === 'pause') data = controlPhaseRun(this.runtime, 'pause', body.taskId, body.reason)
+    else if (known && route === '/phases' && body.action === 'resume') data = controlPhaseRun(this.runtime, 'resume', body.taskId)
+    else if (known && route === '/phases' && body.action === 'cancel') data = controlPhaseRun(this.runtime, 'cancel', body.taskId, body.reason)
+    else if (known && route === '/phases' && body.action === 'history') data = this.runtime?.phaseEngine?.history(body.taskId, { limit: body.limit || 100 }) || {}
+    else if (known && route === '/phases' && body.action === 'list') data = this.runtime?.phaseEngine?.observeAll({ limit: body.limit || 12, status: body.status }) || []
     else if (known && route === '/phases' && body.taskId) data = this.runtime?.phaseEngine?.observe(body.taskId) || {}
     else if (known && route === '/phases') data = this.runtime?.phaseEngine?.plan(body || {}) || {}
+    else if (known && route === '/observability' && body.taskId) data = this.runtime?.phaseEngine?.history(body.taskId, { limit: body.limit || 100 }) || {}
+    else if (known && route === '/observability') data = { phaseEngine: this.runtime?.phaseEngine?.snapshot(), taskLedger: this.runtime?.observability?.snapshot() }
     else if (known) data = { status: 'adapter-ready', route }
     const response = { requestId: `api-${this.requests.length + 1}`, route, method, known, status: known ? 200 : 404, data, sessionId, createdAt: new Date().toISOString() }
     this.requests.unshift(response)
@@ -51,6 +58,14 @@ export class UniversalApi {
   snapshot() {
     return { routes: API_ROUTES.length, requests: this.requests.length, spec: this.openApi() }
   }
+}
+
+function controlPhaseRun(runtime, action, taskId, reason) {
+  if (!runtime || !taskId) return {}
+  const taskExists = runtime.tasks?.has?.(taskId)
+  const controller = taskExists && typeof runtime[action] === 'function' ? runtime[action].bind(runtime) : runtime.phaseEngine?.[action]?.bind(runtime.phaseEngine)
+  const result = controller ? controller(taskId, reason) : null
+  return runtime.phaseEngine?.observe(taskId) || result || {}
 }
 
 function normalizePath(path) {

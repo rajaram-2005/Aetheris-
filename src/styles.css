@@ -687,6 +687,98 @@ kbd { font-family: var(--font-mono); border: 1px solid var(--line-strong); paddi
 .device-protocols span { display: inline-flex; align-items: center; gap: 4px; }
 .device-protocols svg { color: #91a59c; }
 
+/* Observability */
+.observability-banner { display: flex; align-items: center; gap: 11px; padding: 12px 14px; margin-bottom: 12px; border: 1px solid rgba(115,223,180,.2); border-radius: 9px; background: linear-gradient(105deg, rgba(115,223,180,.085), rgba(98,189,232,.035)); }
+.observability-banner-icon { width: 34px; height: 34px; display: grid; place-items: center; flex: 0 0 auto; color: var(--mint); border: 1px solid rgba(181,245,216,.18); border-radius: 8px; background: var(--mint-dim); }
+.observability-banner > div:nth-child(2) { min-width: 0; display: grid; gap: 3px; flex: 1; }
+.observability-banner strong { font-size: 10px; }
+.observability-banner > div:nth-child(2) > span:last-child { color: #789087; font-size: 8px; }
+.observability-banner > .pill { flex: 0 0 auto; }
+.observability-stats { margin-bottom: 12px; }
+.observability-runs-panel { overflow: hidden; margin-bottom: 12px; }
+.observability-runs-body { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(270px, .8fr); gap: 0; }
+.observability-run-list { min-height: 82px; padding: 8px; border-right: 1px solid var(--line); }
+.observability-run-row { width: 100%; display: grid; grid-template-columns: 112px minmax(80px, 1fr) 90px 42px 14px; align-items: center; gap: 9px; min-height: 37px; padding: 6px 8px; text-align: left; color: inherit; border: 1px solid transparent; border-radius: 6px; background: transparent; }
+.observability-run-row:hover, .observability-run-row.selected { border-color: rgba(181,245,216,.18); background: rgba(115,223,180,.055); }
+.observability-run-row strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #b9cec7; font: 8px var(--font-mono); }
+.observability-run-row > span:not(.observability-run-state) { color: #72867e; font: 7px var(--font-mono); }
+.observability-run-row > b { color: var(--mint); font: 8px var(--font-mono); text-align: right; }
+.observability-run-row > svg { color: #5b7169; }
+.observability-run-state { display: inline-flex; align-items: center; gap: 6px; color: #8ca49b; font: 7px var(--font-mono); text-transform: uppercase; }
+.observability-run-state.running { color: var(--mint); }
+.observability-run-state.paused { color: var(--gold); }
+.observability-run-state.completed { color: var(--mint-strong); }
+.observability-run-state.cancelled { color: var(--coral); }
+.observability-run-controls { display: grid; align-content: center; gap: 13px; padding: 15px; background: rgba(18,26,28,.38); }
+.observability-control-copy { display: grid; gap: 4px; min-width: 0; }
+.observability-control-copy strong { color: var(--mint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 9px var(--font-mono); }
+.observability-control-copy > span:last-child { color: #71847d; font: 7px var(--font-mono); }
+.observability-control-buttons { display: flex; flex-wrap: wrap; gap: 6px; }
+.observability-control-buttons button { min-height: 29px; }
+.observability-control-buttons button:disabled { cursor: not-allowed; opacity: .35; filter: saturate(.55); }
+.observability-main-grid { display: grid; grid-template-columns: minmax(0, 1.22fr) minmax(280px, .78fr); gap: 12px; margin-bottom: 12px; }
+.observability-current-panel, .observability-checkpoint-panel, .observability-map-panel, .observability-events-panel, .observability-actions-panel { overflow: hidden; }
+.observability-current-body { padding: 18px 17px 15px; }
+.observability-current-hero { display: flex; align-items: center; gap: 12px; min-height: 70px; }
+.observability-phase-number { width: 55px; height: 55px; display: grid; place-items: center; flex: 0 0 auto; border: 1px solid rgba(181,245,216,.2); border-radius: 10px; background: var(--mint-dim); color: var(--mint); font: 10px var(--font-mono); }
+.observability-phase-number.violet { color: var(--violet); background: var(--violet-dim); border-color: rgba(201,192,255,.2); }
+.observability-phase-number.gold { color: var(--gold); background: var(--gold-dim); border-color: rgba(231,204,142,.2); }
+.observability-phase-number.blue { color: var(--blue); background: var(--blue-dim); border-color: rgba(153,215,244,.2); }
+.observability-phase-number.coral { color: var(--coral); background: var(--coral-dim); border-color: rgba(242,165,143,.2); }
+.observability-current-hero > div { min-width: 0; display: grid; gap: 5px; }
+.observability-current-hero strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+.observability-current-hero > div > span:last-child { color: #758a82; font: 8px/1.5 var(--font-mono); }
+.observability-progress-row { display: flex; align-items: center; gap: 10px; margin-top: 19px; }
+.observability-progress-row .progress-track { flex: 1; }
+.observability-progress-row > strong { width: 33px; color: var(--mint); font: 10px var(--font-mono); text-align: right; }
+.observability-current-meta { display: flex; flex-wrap: wrap; gap: 14px; padding-top: 14px; margin-top: 15px; border-top: 1px solid var(--line); color: #70847c; font: 7px var(--font-mono); }
+.observability-current-meta span { display: inline-flex; align-items: center; gap: 5px; }
+.observability-current-meta svg { color: var(--mint-strong); }
+.checkpoint-card { display: flex; align-items: center; gap: 10px; padding: 16px 15px; }
+.checkpoint-icon { width: 37px; height: 37px; display: grid; place-items: center; flex: 0 0 auto; color: var(--gold); border: 1px solid rgba(231,204,142,.2); border-radius: 8px; background: var(--gold-dim); }
+.checkpoint-card > div:last-child { min-width: 0; display: grid; gap: 4px; }
+.checkpoint-card strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--gold); font: 9px var(--font-mono); }
+.checkpoint-card > div:last-child > span:last-child { color: #74887f; font: 7px var(--font-mono); }
+.checkpoint-details { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1px; margin: 0 15px; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
+.checkpoint-details > div { display: grid; gap: 4px; padding: 10px; background: rgba(18,26,28,.53); }
+.checkpoint-details span { color: #61756e; font: 7px var(--font-mono); text-transform: uppercase; }
+.checkpoint-details strong { color: #abc0b8; font: 8px var(--font-mono); }
+.checkpoint-note { display: flex; align-items: flex-start; gap: 6px; padding: 12px 15px 15px; margin: 0; color: #71857d; font-size: 8px; line-height: 1.5; }
+.checkpoint-note svg { flex: 0 0 auto; color: var(--mint-strong); margin-top: 1px; }
+.observability-map-panel { margin-bottom: 12px; }
+.observability-group-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; padding: 12px; }
+.observability-group-card { min-width: 0; padding: 10px; border: 1px solid var(--line); border-radius: 7px; background: rgba(18,26,28,.55); }
+.observability-group-head { display: grid; grid-template-columns: 29px minmax(0, 1fr) auto; align-items: center; gap: 8px; }
+.observability-group-head > div { min-width: 0; display: grid; gap: 3px; }
+.observability-group-head strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 9px; }
+.observability-group-head span:not(.phase-group-number) { color: #6f847b; font: 7px var(--font-mono); }
+.observability-group-head > b { color: #a0b9af; font: 8px var(--font-mono); }
+.observability-phase-cells { display: grid; grid-template-columns: repeat(10, minmax(7px, 1fr)); gap: 3px; padding-top: 10px; }
+.observability-phase-cell { height: 7px; min-width: 0; border-radius: 2px; background: #273532; border: 1px solid rgba(223,244,239,.035); }
+.observability-phase-cell.defined, .observability-phase-cell.not-started { background: #263430; }
+.observability-phase-cell.not-applicable { opacity: .25; }
+.observability-phase-cell.queued { background: rgba(148,132,255,.5); border-color: rgba(201,192,255,.28); }
+.observability-phase-cell.running { background: var(--blue-strong); border-color: rgba(153,215,244,.55); box-shadow: 0 0 8px rgba(98,189,232,.5); animation: pulse-soft 1.8s ease-in-out infinite; }
+.observability-phase-cell.completed { background: var(--mint-strong); border-color: rgba(181,245,216,.45); }
+.observability-phase-cell.failed, .observability-phase-cell.cancelled { background: var(--coral-strong); }
+.observability-detail-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
+.observability-events, .observability-actions { padding: 7px 14px 9px; }
+.observability-event, .observability-action { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; align-items: start; gap: 9px; padding: 10px 1px; border-bottom: 1px solid rgba(223,244,239,.055); }
+.observability-event:last-child, .observability-action:last-child { border-bottom: 0; }
+.observability-event > div, .observability-action > div { min-width: 0; display: grid; gap: 3px; }
+.observability-event strong, .observability-action strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 9px; }
+.observability-event span, .observability-action span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #71857d; font: 7px var(--font-mono); }
+.observability-event time, .observability-action time { color: #5d716a; white-space: nowrap; padding-top: 2px; font: 7px var(--font-mono); }
+.observability-action-number { width: 28px; height: 23px; display: grid; place-items: center; border-radius: 4px; color: var(--mint); background: var(--mint-dim); font: 7px var(--font-mono); }
+.observability-action-number.completed { color: var(--mint); }
+.observability-empty { min-height: 68px; display: grid; justify-items: center; align-content: center; gap: 6px; padding: 15px; color: #71857d; text-align: center; }
+.observability-empty svg { color: #69877a; }
+.observability-empty strong { color: #afc6bc; font-size: 10px; }
+.observability-empty span { max-width: 280px; font-size: 8px; line-height: 1.5; }
+.observability-empty.large { min-height: 185px; }
+.observability-empty.large svg { color: var(--mint); }
+.observability-empty .primary-small { margin-top: 5px; }
+
 /* Drawer and toast */
 .drawer-backdrop { position: fixed; z-index: 20; inset: 0; background: rgba(3,6,7,.62); backdrop-filter: blur(4px); display: flex; justify-content: flex-end; animation: fade-in .2s ease; }
 .task-drawer { width: min(410px, 100%); height: 100%; overflow-y: auto; background: #0e1517; border-left: 1px solid var(--line-strong); box-shadow: -20px 0 60px rgba(0,0,0,.34); padding: 25px 23px 20px; animation: slide-in .24s ease; }
@@ -722,6 +814,7 @@ kbd { font-family: var(--font-mono); border: 1px solid var(--line-strong); paddi
 .toast button { border: 0; background: transparent; color: #698078; display: grid; place-items: center; }
 
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
+@keyframes pulse-soft { 0%, 100% { opacity: 1; } 50% { opacity: .62; } }
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes slide-in { from { transform: translateX(25px); opacity: .65; } to { transform: translateX(0); opacity: 1; } }
@@ -739,6 +832,7 @@ kbd { font-family: var(--font-mono); border: 1px solid var(--line-strong); paddi
   .plugin-grid { grid-template-columns: repeat(2, 1fr); }
   .native-module-grid { grid-template-columns: repeat(3, 1fr); }
   .phase-engine-layout { grid-template-columns: 1fr; }
+  .observability-main-grid, .observability-detail-grid { grid-template-columns: 1fr; }
   .memory-fabric-grid { grid-template-columns: repeat(2, 1fr); }
   .device-grid { grid-template-columns: repeat(2, 1fr); }
 }
@@ -756,6 +850,8 @@ kbd { font-family: var(--font-mono); border: 1px solid var(--line-strong); paddi
   .topbar { padding-inline: 24px; }
   .dashboard-grid { grid-template-columns: 1fr; }
   .activity-panel { min-height: auto; }
+  .observability-runs-body { grid-template-columns: 1fr; }
+  .observability-run-list { border-right: 0; border-bottom: 1px solid var(--line); }
   .bottom-grid { grid-template-columns: 1fr; }
   .agent-overview-side > div { min-width: 90px; padding-inline: 13px; }
   .agent-grid { grid-template-columns: repeat(2, 1fr); }
@@ -807,6 +903,11 @@ kbd { font-family: var(--font-mono); border: 1px solid var(--line-strong); paddi
   .quick-actions { padding-bottom: 19px; }
   .quick-label { width: 100%; }
   .stats-grid, .workflow-grid, .model-health-grid, .mcp-health-grid, .mcp-tool-grid, .plugin-health-grid, .plugin-grid, .native-module-grid, .memory-fabric-grid, .device-grid, .agent-grid, .asset-grid { grid-template-columns: 1fr; }
+  .observability-banner { align-items: flex-start; flex-wrap: wrap; }
+  .observability-banner > .pill { margin-left: 45px; }
+  .observability-run-row { grid-template-columns: 104px minmax(60px, 1fr) 75px 35px 14px; gap: 6px; }
+  .observability-group-grid { grid-template-columns: 1fr; }
+  .observability-current-meta { gap: 8px; }
   .architecture-hero { align-items: flex-start; flex-wrap: wrap; }
   .architecture-hero-stat { margin-left: 91px; justify-items: start; }
   .architecture-toolbar { align-items: stretch; flex-direction: column; }

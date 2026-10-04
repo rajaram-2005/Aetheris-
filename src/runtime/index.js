@@ -125,6 +125,24 @@ export function createAetherisRuntime(options = {}) {
     runAllPhases(taskId, options = {}) {
       return godCore.phaseEngine.runToCompletion(taskId, options)
     },
+    observePhaseRuns(options = {}) {
+      return godCore.phaseEngine.observeAll(options)
+    },
+    phaseRunHistory(taskId, options = {}) {
+      return godCore.phaseEngine.history(taskId, options)
+    },
+    pausePhaseRun(taskId, reason) {
+      return godCore.phaseEngine.pause(taskId, reason)
+    },
+    resumePhaseRun(taskId) {
+      return godCore.phaseEngine.resume(taskId)
+    },
+    cancelPhaseRun(taskId, reason) {
+      return godCore.phaseEngine.cancel(taskId, reason)
+    },
+    phaseObservability() {
+      return { phaseEngine: godCore.phaseEngine.snapshot(), taskLedger: godCore.observability.snapshot() }
+    },
     planOfflineMedia(payload) {
       return godCore.offlineMedia.plan(payload)
     },

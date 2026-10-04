@@ -167,7 +167,7 @@ export class GodCore {
       'aetheris.plugins.uninstall': (args) => this.plugins.uninstall(args.pluginId),
       'aetheris.plugins.invoke': (args, context) => this.plugins.invoke(args.pluginId, args.capability, args.input || {}, { approved: context.approved || args.approved, context }),
       'aetheris.training.plan': (args) => this.training.plan(args),
-      'aetheris.observability.trace': (args) => this.observability.get(args.taskId),
+      'aetheris.observability.trace': (args) => ({ taskTrace: this.observability.get(args.taskId), phaseRun: this.phaseEngine.observe(args.taskId), phaseHistory: this.phaseEngine.history(args.taskId, { limit: args.limit || 100 }) }),
     }})
   }
 
@@ -318,6 +318,7 @@ export class GodCore {
       activity: [],
       checkpoint: 'intent',
       fullPhaseRun: Boolean(options.fullPhaseRun),
+      phaseRunDelay: normalizePhaseDelay(options.phaseRunDelay, options.fullPhaseRun ? 18 : 32),
     }
 
     task.plan.dataRefs.relational = `tasks/${task.id}`
@@ -345,7 +346,7 @@ export class GodCore {
       this.emitTask(task, 'task.awaiting-approval')
     } else {
       this.execute(task)
-      this.phaseEngine.runToCompletion(task.id, { delay: task.fullPhaseRun ? 18 : 32 })
+      this.phaseEngine.runToCompletion(task.id, { delay: task.phaseRunDelay })
     }
     return serializeTask(task)
   }
@@ -369,7 +370,7 @@ export class GodCore {
     this.addActivity(task, 'Policy approved by user', 'Execution scope unlocked', 'gold')
     this.emitTask(task, 'task.approved')
     this.execute(task)
-    this.phaseEngine.runToCompletion(task.id, { delay: task.fullPhaseRun ? 18 : 32 })
+    this.phaseEngine.runToCompletion(task.id, { delay: task.phaseRunDelay })
     return serializeTask(task)
   }
 
@@ -603,6 +604,11 @@ export class GodCore {
     task.activity.unshift({ title, detail, tone, time: 'now' })
     task.activity = task.activity.slice(0, 12)
   }
+}
+
+function normalizePhaseDelay(value, fallback) {
+  const delay = Number(value)
+  return Number.isFinite(delay) ? Math.min(Math.max(Math.round(delay), 0), 5000) : fallback
 }
 
 function evaluatePolicy(understanding, { online }) {

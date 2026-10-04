@@ -72,6 +72,7 @@ import { createAetherisRuntime } from './runtime/index.js'
 
 const NAV_ITEMS = [
   { id: 'command', label: 'Command center', icon: Command },
+  { id: 'observability', label: 'Observability', icon: Activity, count: 'LIVE' },
   { id: 'architecture', label: '150-phase engine', icon: Layers3, count: '150' },
   { id: 'workflows', label: 'Workflows', icon: Workflow, count: '04' },
   { id: 'agents', label: 'Agent fabric', icon: Bot, count: '56' },
@@ -315,10 +316,10 @@ function Sidebar({ activeView, setActiveView, collapsed, setCollapsed }) {
   )
 }
 
-function Topbar({ online, setOnline, onNewTask }) {
+function Topbar({ online, setOnline, onNewTask, viewLabel = 'Command center' }) {
   return (
     <header className="topbar">
-      <div className="breadcrumbs"><span>AETHERIS</span><ChevronRight size={13} /><strong>Command center</strong></div>
+      <div className="breadcrumbs"><span>AETHERIS</span><ChevronRight size={13} /><strong>{viewLabel}</strong></div>
       <div className="topbar-actions">
         <button className={`network-toggle ${online ? 'online' : ''}`} onClick={() => setOnline(!online)} title="Toggle network access">
           <span className="network-icon">{online ? <Globe2 size={14} /> : <LockKeyhole size={13} />}</span>
@@ -658,6 +659,139 @@ function ArchitectureView({ runtime, runtimeSnapshot }) {
       <div className="phase-engine-layout"><section className="panel phase-groups-panel"><PanelHeader eyebrow="14 PARTS / 150 PHASES" title="Lifecycle map" action="Select a part" /><div className="phase-group-list">{(architecture.groups || []).map((group) => <button key={group.id} className={`phase-group-row ${selectedGroup === group.id ? 'selected' : ''}`} onClick={() => setSelectedGroup(group.id)}><span className={`phase-group-number ${group.tone}`}>{String(group.start).padStart(2, '0')}</span><div><strong>{group.name}</strong><span>Phases {group.start}–{group.end} · {group.domain}</span></div><b>{group.count}</b><ChevronRight size={14} /></button>)}</div></section><section className="panel phase-detail-panel"><PanelHeader eyebrow={`PHASES ${selected?.start || 1}–${selected?.end || 10} / ${selected?.domain || 'lifecycle'}`} title={selected?.name || 'Conversation & intent'} action={`${phases.length} visible`} /><div className="phase-definition-list">{phases.map((phase) => <div className="phase-definition-row" key={phase.id}><span className={`phase-number ${phase.tone}`}>{String(phase.number).padStart(3, '0')}</span><div><strong>{phase.name}</strong><span>{phase.domain} intelligence contract</span></div>{phase.parallel && <Pill tone="violet">parallel</Pill>}<StatusDot tone={phase.parallel ? 'violet' : 'mint'} /></div>)}</div></section></div>
     </div>
   )
+}
+
+function ObservabilityView({ runtime, runtimeSnapshot, onNotify }) {
+  const engine = runtimeSnapshot?.phaseEngine || {}
+  const runs = engine.recentRuns || []
+  const [selectedId, setSelectedId] = useState(null)
+  const selectedRun = runs.find((run) => run.taskId === selectedId) || runs[0] || null
+  const definitions = engine.definitions || []
+  const groups = engine.groups || []
+  const phasesByNumber = useMemo(() => new Map((selectedRun?.phases || []).map((phase) => [phase.number, phase])), [selectedRun])
+  const groupSummary = useMemo(() => groups.map((group) => {
+    const phaseRows = definitions.filter((phase) => phase.number >= group.start && phase.number <= group.end).map((phase) => phasesByNumber.get(phase.number) || phase)
+    return {
+      ...group,
+      completed: phaseRows.filter((phase) => phase.status === 'completed').length,
+      running: phaseRows.filter((phase) => phase.status === 'running').length,
+      queued: phaseRows.filter((phase) => phase.status === 'queued').length,
+      applicable: phaseRows.filter((phase) => phase.status !== 'not-applicable').length,
+    }
+  }), [definitions, groups, phasesByNumber])
+
+  useEffect(() => {
+    if (!selectedId && runs[0]) setSelectedId(runs[0].taskId)
+    if (selectedId && !runs.some((run) => run.taskId === selectedId)) setSelectedId(runs[0]?.taskId || null)
+  }, [runs, selectedId])
+
+  const notify = (title, detail) => onNotify?.({ title, detail })
+  const startRun = () => {
+    const task = runtime.submit('Observe and verify the complete Aetheris lifecycle', { fullPhaseRun: true, phaseRunDelay: 35, context: { source: 'observability-console' } })
+    setSelectedId(task.id)
+    notify('Monitored run started', `${task.id} is streaming phase checkpoints.`)
+  }
+  const controlRun = (action) => {
+    if (!selectedRun) return
+    const labels = { pause: 'Run paused', resume: 'Run resumed', cancel: 'Run cancelled', advance: 'Phase advanced' }
+    const details = {
+      pause: `${selectedRun.taskId} checkpoint retained safely.`,
+      resume: `${selectedRun.taskId} is continuing from its latest checkpoint.`,
+      cancel: `${selectedRun.taskId} was cancelled and marked in the ledger.`,
+      advance: `${selectedRun.taskId} advanced exactly one phase.`,
+    }
+    if (action === 'pause') runtime.pauseTask(selectedRun.taskId, 'Paused from observability console')
+    if (action === 'resume') runtime.resumeTask(selectedRun.taskId)
+    if (action === 'cancel') runtime.cancelTask(selectedRun.taskId, 'Cancelled from observability console')
+    if (action === 'advance') runtime.advancePhase(selectedRun.taskId)
+    notify(labels[action], details[action])
+  }
+  const selectedEvents = selectedRun?.events || []
+  const selectedActions = selectedRun?.actions || []
+  const canPause = selectedRun?.status === 'running'
+  const canResume = selectedRun?.status === 'paused'
+  const canAdvance = selectedRun && ['running', 'paused'].includes(selectedRun.status) && !selectedRun.autoRunning
+  const runStatus = selectedRun ? formatRunStatus(selectedRun.status) : 'No run selected'
+
+  return (
+    <div className="page-content observability-page">
+      <PageHeader eyebrow="OBSERVABILITY / PHASE LEDGER + RUNTIME TELEMETRY" title={<>See every phase. <em>Control every transition.</em></>} description="A live, local-first control surface for phase progress, checkpoints, ordered operations, runtime events, and safe run controls." action={{ label: 'Start monitored run', icon: Play }} onAction={startRun} />
+      <div className="observability-banner"><div className="observability-banner-icon"><Activity size={19} /></div><div><span className="panel-eyebrow">LIVE PHASE TELEMETRY</span><strong>{engine.activeRuns || 0} active runs · {engine.eventCount || 0} ledger events retained</strong><span>Phase events are emitted from the native engine and remain observable without exposing private reasoning.</span></div><Pill tone="mint" dot>LOCAL STREAM</Pill></div>
+      <div className="stats-grid observability-stats">
+        <StatCard icon={Activity} label="Active runs" value={String(engine.activeRuns || 0).padStart(2, '0')} detail={`${engine.pausedRuns || 0} paused checkpoints`} tone="mint" trend={{ label: 'LIVE', positive: true }} />
+        <StatCard icon={Layers3} label="Selected progress" value={`${selectedRun?.progress || 0}%`} detail={selectedRun ? `${selectedRun.completed?.length || 0} of ${selectedRun.activePhases || 0} active phases` : 'Start a run to inspect it'} tone="violet" trend={{ label: selectedRun ? runStatus.toUpperCase() : 'IDLE', positive: Boolean(selectedRun) }} />
+        <StatCard icon={ListTodo} label="Operation history" value={String(selectedActions.length)} detail="Ordered phase actions recorded" tone="gold" trend={{ label: 'AUDITABLE', positive: true }} />
+        <StatCard icon={Radio} label="Event stream" value={String(engine.eventCount || 0)} detail="Run, phase, checkpoint, and control events" tone="blue" trend={{ label: 'LOCAL', positive: true }} />
+      </div>
+      <section className="panel observability-runs-panel">
+        <PanelHeader eyebrow="RUN SELECTOR / RESUMABLE LEDGER" title={selectedRun ? `${selectedRun.taskId} · ${runStatus}` : 'No phase run yet'} action={`${runs.length} recent runs`} />
+        <div className="observability-runs-body">
+          <div className="observability-run-list">{runs.length ? runs.map((run) => <button key={run.taskId} className={`observability-run-row ${selectedRun?.taskId === run.taskId ? 'selected' : ''}`} onClick={() => setSelectedId(run.taskId)}><span className={`observability-run-state ${run.status}`}><StatusDot tone={phaseTone(run.status)} pulse={run.status === 'running'} />{formatRunStatus(run.status)}</span><strong>{run.taskId}</strong><span>{run.completed?.length || 0}/{run.activePhases || 0} phases</span><b>{run.progress || 0}%</b><ChevronRight size={14} /></button>) : <div className="observability-empty"><CircleDashed size={20} /><strong>Waiting for a phase run</strong><span>Start a monitored full run to populate the live ledger.</span></div>}</div>
+          <div className="observability-run-controls"><div className="observability-control-copy"><span className="panel-eyebrow">SELECTED CHECKPOINT</span><strong>{selectedRun?.checkpoint || '—'}</strong><span>{selectedRun?.updatedAt ? `updated ${formatEventTime(selectedRun.updatedAt)}` : 'No checkpoint is active'}</span></div><div className="observability-control-buttons"><button className="secondary-button" onClick={() => controlRun('pause')} disabled={!canPause}><Pause size={14} /> Pause</button><button className="primary-small" onClick={() => controlRun('resume')} disabled={!canResume}><Play size={14} /> Resume</button><button className="secondary-button" onClick={() => controlRun('advance')} disabled={!canAdvance}><ArrowRight size={14} /> Step</button><button className="danger-button" onClick={() => controlRun('cancel')} disabled={!selectedRun || ['completed', 'cancelled'].includes(selectedRun.status)}><X size={14} /> Cancel</button></div></div>
+        </div>
+      </section>
+      <div className="observability-main-grid">
+        <section className="panel observability-current-panel">
+          <PanelHeader eyebrow={`CURRENT PHASE / ${selectedRun?.taskId || 'NO RUN'}`} title={selectedRun?.currentPhase ? `Phase ${String(selectedRun.currentPhase.number).padStart(3, '0')} · ${selectedRun.currentPhase.name}` : selectedRun ? 'Run complete' : 'Phase stream idle'} action={selectedRun ? `${selectedRun.progress || 0}%` : '—'} />
+          {selectedRun ? <div className="observability-current-body"><div className="observability-current-hero"><span className={`observability-phase-number ${selectedRun.currentPhase ? selectedRun.currentPhase.tone : 'mint'}`}>{selectedRun.currentPhase ? String(selectedRun.currentPhase.number).padStart(3, '0') : '✓'}</span><div><span className="live-badge"><StatusDot tone={phaseTone(selectedRun.status)} pulse={selectedRun.status === 'running'} /> {runStatus.toUpperCase()}</span><strong>{selectedRun.currentPhase?.name || 'All selected phases completed'}</strong><span>{selectedRun.currentPhase ? `${selectedRun.currentPhase.domain} intelligence contract · ${selectedRun.currentPhase.parallel ? 'parallel-capable track' : 'sequential gate'}` : 'Final Response delivered through the controlled lifecycle.'}</span></div></div><div className="observability-progress-row"><div className="progress-track large"><span style={{ width: `${selectedRun.progress || 0}%` }} /></div><strong>{selectedRun.progress || 0}%</strong></div><div className="observability-current-meta"><span><Clock3 size={13} /> started {formatEventTime(selectedRun.startedAt)}</span><span><Check size={13} /> {selectedRun.completed?.length || 0} completed</span><span><Activity size={13} /> {selectedEvents.length} events in run</span></div></div> : <div className="observability-empty large"><Activity size={24} /><strong>Phase telemetry will appear here</strong><span>The selected run exposes active phase, progress, checkpoint, ordered completion, and controls in one place.</span><button className="primary-small" onClick={startRun}><Play size={14} /> Start full run</button></div>}
+        </section>
+        <section className="panel observability-checkpoint-panel">
+          <PanelHeader eyebrow="CHECKPOINT / RECOVERY CONTEXT" title="Safe handoff state" action="Retained locally" />
+          <div className="checkpoint-card"><div className="checkpoint-icon"><ShieldCheck size={19} /></div><div><span className="panel-eyebrow">LATEST CHECKPOINT</span><strong>{selectedRun?.checkpointState?.name || selectedRun?.checkpoint || 'Awaiting run'}</strong><span>{selectedRun?.checkpointState?.phase ? `Phase ${String(selectedRun.checkpointState.phase).padStart(3, '0')} · ` : ''}{selectedRun?.checkpointState?.status || 'not-started'}</span></div></div><div className="checkpoint-details"><div><span>Current phase</span><strong>{selectedRun?.currentPhase ? String(selectedRun.currentPhase.number).padStart(3, '0') : '—'}</strong></div><div><span>Last action</span><strong>{selectedActions.length ? String(selectedActions[selectedActions.length - 1].phase).padStart(3, '0') : '—'}</strong></div><div><span>Auto mode</span><strong>{selectedRun?.autoRunning ? 'RUNNING' : selectedRun?.autoRequested ? 'REQUESTED' : 'MANUAL'}</strong></div><div><span>Private reasoning</span><strong>NOT STORED</strong></div></div><p className="checkpoint-note"><LockKeyhole size={13} /> Controls change lifecycle state only; they do not expose hidden model reasoning or credentials.</p>
+        </section>
+      </div>
+      <section className="panel observability-map-panel">
+        <PanelHeader eyebrow="PHASE MAP / 14 GROUPS / 150 DEFINITIONS" title="Lifecycle coverage" action={selectedRun ? `${selectedRun.completed?.length || 0} completed` : 'No selected run'} />
+        <div className="observability-group-grid">{groupSummary.map((group) => <div className="observability-group-card" key={group.id}><div className="observability-group-head"><span className={`phase-group-number ${group.tone}`}>{String(group.start).padStart(2, '0')}</span><div><strong>{group.name.replace(/^Part [IVX]+ — /, '')}</strong><span>{group.domain} · {group.completed}/{group.count} complete</span></div><b>{group.running ? 'LIVE' : `${Math.round((group.completed / Math.max(group.count, 1)) * 100)}%`}</b></div><div className="observability-phase-cells">{definitions.filter((phase) => phase.number >= group.start && phase.number <= group.end).map((phase) => { const state = phasesByNumber.get(phase.number)?.status || 'not-started'; return <span key={phase.id} className={`observability-phase-cell ${state}`} title={`Phase ${phase.number} · ${phase.name} · ${state}`} /> })}</div></div>)}</div>
+      </section>
+      <div className="observability-detail-grid">
+        <section className="panel observability-events-panel"><PanelHeader eyebrow="EVENT STREAM / NEWEST FIRST" title="Runtime events" action={`${selectedEvents.length} in run`} /><div className="observability-events">{selectedEvents.length ? selectedEvents.slice(0, 12).map((event) => <div className="observability-event" key={event.id}><ToneIcon icon={phaseEventIcon(event.type)} tone={phaseTone(event.status)} size={16} /><div><strong>{phaseEventLabel(event.type)}</strong><span>{event.data?.name || (event.phase ? `Phase ${String(event.phase).padStart(3, '0')}` : 'Run ledger')} {event.checkpoint ? ` · ${event.checkpoint}` : ''}</span></div><time>{formatEventTime(event.time)}</time></div>) : <div className="observability-empty"><CircleDashed size={19} /><span>No events recorded yet.</span></div>}</div></section>
+        <section className="panel observability-actions-panel"><PanelHeader eyebrow="ORDERED ACTION HISTORY" title="Phase operations" action={`${selectedActions.length} actions`} /><div className="observability-actions">{selectedActions.length ? selectedActions.slice(-10).reverse().map((action) => <div className="observability-action" key={`${action.id}-${action.completedAt}`}><span className={`observability-action-number ${action.status}`}>{String(action.phase).padStart(3, '0')}</span><div><strong>{action.name}</strong><span>{action.domain} · {action.operation}</span></div><time>{formatEventTime(action.completedAt)}</time></div>) : <div className="observability-empty"><ListTodo size={19} /><span>Completed phase operations will appear here.</span></div>}</div></section>
+      </div>
+    </div>
+  )
+}
+
+function formatRunStatus(status) {
+  return String(status || 'idle').replace(/(^|[-_])([a-z])/g, (_, prefix, letter) => `${prefix ? ' ' : ''}${letter.toUpperCase()}`)
+}
+
+function phaseTone(status) {
+  if (status === 'completed') return 'mint'
+  if (status === 'running') return 'blue'
+  if (status === 'paused') return 'gold'
+  if (status === 'cancelled') return 'coral'
+  return 'muted'
+}
+
+function phaseEventLabel(type) {
+  return {
+    'run.started': 'Run ledger opened',
+    'run.auto-started': 'Continuous mode started',
+    'run.advanced': 'Checkpoint recorded',
+    'run.paused': 'Run paused safely',
+    'run.resumed': 'Run resumed',
+    'run.cancelled': 'Run cancelled',
+    'run.completed': 'Run completed',
+    'phase.started': 'Phase started',
+    'phase.completed': 'Phase completed',
+    'manual.step-requested': 'Manual step requested',
+  }[type] || type
+}
+
+function phaseEventIcon(type) {
+  if (type?.startsWith('phase.')) return Layers3
+  if (type === 'run.paused' || type === 'run.cancelled') return Pause
+  if (type === 'run.completed') return CircleCheck
+  if (type === 'manual.step-requested') return ArrowRight
+  return Activity
+}
+
+function formatEventTime(value) {
+  if (!value) return '—'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '—'
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
 }
 
 function nativeIcon(domain) {
@@ -1052,6 +1186,7 @@ function App() {
   const renderView = () => {
     switch (activeView) {
       case 'architecture': return <ArchitectureView runtime={runtime} runtimeSnapshot={runtimeSnapshot} />
+      case 'observability': return <ObservabilityView runtime={runtime} runtimeSnapshot={runtimeSnapshot} onNotify={setToast} />
       case 'workflows': return <WorkflowsView setActiveView={setActiveView} openTask={openTask} />
       case 'agents': return <AgentsView />
       case 'models': return <ModelsView />
@@ -1069,7 +1204,7 @@ function App() {
     <div className="app-shell">
       <Sidebar activeView={activeView} setActiveView={setActiveView} collapsed={collapsed} setCollapsed={setCollapsed} />
       <main className="main-shell">
-        <Topbar online={online} setOnline={setOnline} onNewTask={openNewTask} />
+        <Topbar online={online} setOnline={setOnline} onNewTask={openNewTask} viewLabel={NAV_ITEMS.find((item) => item.id === activeView)?.label || 'Command center'} />
         <div className="page-scroll">{renderView()}</div>
       </main>
       <TaskDrawer
