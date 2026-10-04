@@ -13,7 +13,7 @@ export class ModelKnowledgeFabric {
 
   seedRegistry() {
     MODEL_DEFINITIONS.forEach((model) => {
-      this.catalog.set(model.id, { id: model.id, name: model.name, type: model.type, local: model.local, modalities: model.modalities, capabilities: model.capabilities, provenance: 'model-registry' })
+      this.catalog.set(model.id, { id: model.id, name: model.name, type: model.type, local: model.local, modalities: model.modalities, capabilities: model.capabilities, quantization: model.quantization, openSource: Boolean(model.openSource), license: model.license || null, provider: model.provider || null, role: model.role || null, provenance: 'model-registry' })
       this.memory?.rememberSemantic(`Model ${model.name} supports ${model.capabilities.join(', ')}`, { source: 'model-registry', modelId: model.id, provenance: 'registry metadata' })
     })
   }

@@ -87,6 +87,18 @@ export function createAetherisRuntime(options = {}) {
     memoryStatus() {
       return godCore.offlineMemory.status()
     },
+    planKnowledgeModel(options = {}) {
+      return godCore.openSourceKnowledge.plan(options)
+    },
+    prepareKnowledgeModel(options = {}) {
+      return godCore.openSourceKnowledge.prepare(options)
+    },
+    synthesizeKnowledge(options = {}) {
+      return godCore.openSourceKnowledge.synthesize(options)
+    },
+    knowledgeModelSnapshot() {
+      return godCore.openSourceKnowledge.snapshot()
+    },
     planOfflineMedia(payload) {
       return godCore.offlineMedia.plan(payload)
     },
@@ -163,3 +175,4 @@ export * from './modelKnowledgeFabric.js'
 export * from './offlineMemory.js'
 export * from './offlineMedia.js'
 export * from './mcpFabric.js'
+export * from './openSourceKnowledge.js'

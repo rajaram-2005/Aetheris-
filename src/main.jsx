@@ -75,7 +75,7 @@ const NAV_ITEMS = [
   { id: 'workflows', label: 'Workflows', icon: Workflow, count: '04' },
   { id: 'agents', label: 'Agent fabric', icon: Bot, count: '56' },
   { id: 'models', label: 'Model registry', icon: Cpu },
-  { id: 'mcp', label: 'MCP toolbox', icon: Cable, count: '46' },
+  { id: 'mcp', label: 'MCP toolbox', icon: Cable, count: '49' },
   { id: 'plugins', label: 'Plugin market', icon: Boxes, count: '12' },
   { id: 'knowledge', label: 'Knowledge', icon: BookOpen },
   { id: 'studio', label: 'Creative studio', icon: Sparkles },
@@ -189,6 +189,8 @@ const AGENT_GROUPS = [
 const MODEL_ROWS = [
   { name: 'Aetheris Reasoner 32B', type: 'LLM', quant: 'Q4_K_M', size: '19.6 GB', use: 'Planning · synthesis', status: 'Loaded', accent: 'mint', latency: '840 ms' },
   { name: 'Mistral Small 3.1', type: 'SLM', quant: 'Q5_K_S', size: '5.1 GB', use: 'Fast routing · local chat', status: 'Loaded', accent: 'violet', latency: '120 ms' },
+  { name: 'Mistral 7B Instruct v0.3', type: 'Knowledge', quant: 'Q4_K_M', size: '4.1 GB', use: 'RAG · cited synthesis', status: 'Available', accent: 'mint', latency: '620 ms' },
+  { name: 'BGE-M3 Embeddings', type: 'Embedding', quant: 'FP16', size: '0.6 GB', use: 'Retrieval · multilingual search', status: 'Available', accent: 'blue', latency: '35 ms' }, 
   { name: 'Llava Vision 7B', type: 'VLM', quant: 'Q4_0', size: '4.8 GB', use: 'Screen · image context', status: 'Standby', accent: 'gold', latency: '410 ms' },
   { name: 'Whisper Large v3', type: 'ASR', quant: 'FP16', size: '3.1 GB', use: 'Voice transcription', status: 'Standby', accent: 'blue', latency: '260 ms' },
   { name: 'SDXL Lightning', type: 'Image', quant: 'FP16', size: '6.6 GB', use: 'Image · diagrams', status: 'Available', accent: 'coral', latency: '8.4 s' },
@@ -587,7 +589,7 @@ function Dashboard({ command, setCommand, runCommand, setActiveView, tasks, onSe
       <div className="stats-grid">
         <StatCard icon={Activity} label="Active run" value="01" detail="RUN-1042 · 2m 14s remaining" tone="mint" trend={{ label: '+1 today', positive: true }} />
         <StatCard icon={Bot} label="Agent fabric" value="42 / 56" detail="Capabilities online and available" tone="violet" trend={{ label: '75%', positive: true }} />
-        <StatCard icon={Cpu} label="Model fabric" value="09" detail="3 loaded · 6 ready on demand" tone="gold" trend={{ label: 'LOCAL', positive: true }} />
+        <StatCard icon={Cpu} label="Model fabric" value="11" detail="3 loaded · 8 ready on demand" tone="gold" trend={{ label: 'LOCAL', positive: true }} />
         <StatCard icon={ShieldCheck} label="Trust score" value="98.4%" detail="Last policy audit · 4 min ago" tone="blue" trend={{ label: 'Healthy', positive: true }} />
       </div>
 
@@ -681,7 +683,7 @@ function ModelsView() {
     <div className="page-content">
       <PageHeader eyebrow="MODEL PLANE / REGISTRY + ROUTING" title="Choose the right intelligence" description="A model-agnostic fabric that balances capability, privacy, latency, resource fit, and availability for every task." action={{ label: 'Add model', icon: Plus }} />
       <div className="model-health-grid"><div className="model-health-card"><div className="model-health-icon mint"><Cpu size={18} /></div><div><span>LOCAL RUNTIME</span><strong>Ready</strong><small>llama.cpp · CUDA 12.4</small></div><StatusDot tone="mint" pulse /></div><div className="model-health-card"><div className="model-health-icon violet"><HardDrive size={18} /></div><div><span>MEMORY BUDGET</span><strong>31.2 / 64 GB</strong><small>48.7% allocated</small></div><StatusDot tone="violet" /></div><div className="model-health-card"><div className="model-health-icon gold"><Gauge size={18} /></div><div><span>ROUTER LATENCY</span><strong>184 ms</strong><small>p95 over last 24h</small></div><StatusDot tone="gold" /></div><div className="model-health-card"><div className="model-health-icon blue"><Globe2 size={18} /></div><div><span>REMOTE MODELS</span><strong>Disabled</strong><small>Local-only policy active</small></div><LockKeyhole size={15} className="muted-icon" /></div></div>
-      <section className="panel model-table-panel"><PanelHeader eyebrow="INSTALLED MODELS / 09 TOTAL" title="Model registry" action="Routing rules" /><div className="model-table"><div className="model-table-head"><span>MODEL</span><span>TYPE / QUANTIZATION</span><span>SIZE</span><span>PRIMARY USE</span><span>STATUS</span><span>LATENCY</span></div>{MODEL_ROWS.map((model) => <ModelRow key={model.name} model={model} />)}</div><button className="load-more"><Plus size={14} /> Show 3 more installed models</button></section>
+      <section className="panel model-table-panel"><PanelHeader eyebrow="INSTALLED MODELS / 11 TOTAL" title="Model registry" action="Routing rules" /><div className="model-table"><div className="model-table-head"><span>MODEL</span><span>TYPE / QUANTIZATION</span><span>SIZE</span><span>PRIMARY USE</span><span>STATUS</span><span>LATENCY</span></div>{MODEL_ROWS.map((model) => <ModelRow key={model.name} model={model} />)}</div><button className="load-more"><Plus size={14} /> Show 3 more installed models</button></section>
       <div className="model-bottom-grid"><section className="panel routing-panel"><PanelHeader eyebrow="ROUTING POLICY" title="Why this model?" /><div className="routing-factors"><Factor label="Capability match" value="94%" width="94%" tone="mint" /><Factor label="Resource fit" value="88%" width="88%" tone="violet" /><Factor label="Privacy" value="100%" width="100%" tone="gold" /></div><p className="muted-paragraph">The router selected <strong>Aetheris Reasoner 32B</strong> for the active engineering workflow because it fits the local VRAM budget and policy.</p></section><section className="panel model-note-panel"><div className="quote-mark">“</div><p>Models are replaceable. The control plane, memory, tools, and verification contracts are the durable system.</p><span>— Aetheris architecture principle</span></section></div>
     </div>
   )
@@ -698,6 +700,10 @@ function Factor({ label, value, width, tone }) {
 const MCP_ARG_PRESETS = {
   'aetheris.core.plan_task': { request: 'Inspect the current project and propose the next safe step.' },
   'aetheris.knowledge.search': { query: 'converter architecture', options: {} },
+  'aetheris.knowledge.plan': { query: 'converter architecture and verification evidence', mode: 'rag', limit: 6 },
+  'aetheris.knowledge.synthesize': { query: 'converter architecture and verification evidence', verified: false },
+  'aetheris.knowledge.configure_model': { provider: 'llama.cpp', quantization: 'Q4_K_M' },
+  'aetheris.models.prepare_knowledge': { provider: 'llama.cpp', quantization: 'Q4_K_M' },
   'aetheris.memory.retrieve': { query: 'recent engineering decisions', options: {} },
   'aetheris.media.plan': { brief: 'Photorealistic local visual for the current project', output: 'image' },
   'aetheris.media.render': { brief: 'Photorealistic local visual for the current project', output: 'image' },
@@ -825,14 +831,21 @@ function PluginsView({ runtime, runtimeSnapshot }) {
   )
 }
 
-function KnowledgeView({ runtimeSnapshot }) {
+function KnowledgeView({ runtime, runtimeSnapshot }) {
   const modelKnowledge = runtimeSnapshot?.modelKnowledge || {}
   const offlineMemory = runtimeSnapshot?.offlineMemory || {}
+  const knowledgeModel = runtimeSnapshot?.openSourceKnowledge || runtime?.knowledgeModelSnapshot?.() || {}
+  const [modelNotice, setModelNotice] = useState(null)
+  const prepareKnowledgeModel = () => {
+    const result = runtime.prepareKnowledgeModel({ provider: 'llama.cpp', quantization: knowledgeModel.model?.quantization || 'Q4_K_M' })
+    setModelNotice(result)
+  }
   return (
     <div className="page-content">
       <PageHeader eyebrow="MEMORY + KNOWLEDGE PLANE / LOCAL RAG" title="Give Aetheris context" description="Working, episodic, semantic, and procedural memory unified with a searchable local knowledge fabric." action={{ label: 'Ingest source', icon: Upload }} />
       <div className="knowledge-hero"><div className="knowledge-hero-copy"><div className="knowledge-pulse"><span /><span /><span /></div><span className="panel-eyebrow">KNOWLEDGE FABRIC</span><h2>Everything your project knows, connected.</h2><p>Sources are parsed, chunked, embedded, and linked into retrieval and graph indexes before they reach God Core.</p><div className="knowledge-hero-actions"><button className="primary-small"><Upload size={14} /> Add knowledge</button><button className="text-button">Explore graph <ArrowRight size={14} /></button></div></div><div className="knowledge-visual"><div className="knowledge-orbit orbit-a" /><div className="knowledge-orbit orbit-b" /><div className="knowledge-center"><Database size={22} /><span>RAG</span></div><div className="knowledge-node node-a"><FileText size={14} /></div><div className="knowledge-node node-b"><Image size={14} /></div><div className="knowledge-node node-c"><Code2 size={14} /></div><div className="knowledge-node node-d"><BookOpen size={14} /></div></div></div>
       <div className="model-memory-banner"><div className="model-memory-mark"><BrainCircuit size={19} /></div><div className="model-memory-copy"><span className="panel-eyebrow">MODEL KNOWLEDGE FABRIC / OFFLINE JOURNAL</span><strong>{modelKnowledge.catalogModels || 0} local models mapped into Aetheris memory</strong><small>Verified outputs become attributed evidence and strategy memory. Model weights remain unchanged.</small></div><div className="model-memory-stats"><div><strong>{modelKnowledge.verifiedArtifacts || 0}</strong><span>verified artifacts</span></div><div><strong>{offlineMemory.pending || 0}</strong><span>pending updates</span></div><div><strong>{offlineMemory.applied || 0}</strong><span>applied locally</span></div></div></div>
+      <section className="open-source-knowledge-card"><div className="open-source-knowledge-mark"><BookOpen size={21} /></div><div className="open-source-knowledge-copy"><span className="panel-eyebrow">OPEN-SOURCE KNOWLEDGE STACK / LOCAL ADAPTER</span><strong>{knowledgeModel.model?.name || 'Mistral 7B Instruct v0.3'}</strong><p>Apache-2.0 instruction model for cited RAG synthesis, paired with {knowledgeModel.embeddingModel?.name || 'BGE-M3 Embeddings'} for local retrieval.</p><div className="open-source-tags"><Pill tone="mint" dot>{knowledgeModel.status === 'ready' ? 'weights configured' : 'adapter ready'}</Pill><Pill tone="neutral">{knowledgeModel.model?.quantization || 'Q4_K_M'}</Pill><Pill tone="neutral">LOCAL ONLY</Pill><Pill tone="neutral">weights unchanged</Pill></div></div><div className="open-source-knowledge-action"><span><strong>{knowledgeModel.plans || 0}</strong> RAG plans</span><button className="primary-small" onClick={prepareKnowledgeModel}><Zap size={14} /> Prepare adapter</button></div></section>{modelNotice && <div className="knowledge-model-notice"><CircleCheck size={15} /><span><strong>{modelNotice.status === 'ready' ? 'Knowledge model ready' : 'Adapter contract ready'}</strong> · {modelNotice.note}</span><button onClick={() => setModelNotice(null)}><X size={14} /></button></div>}
       <div className="memory-fabric-grid"><MemoryFabricCard title="Working memory" value="12" detail="active task items" icon={Activity} tone="mint" items={['RUN-1042 context', 'Current permission scope', 'Open project files']} /><MemoryFabricCard title="Episodic memory" value="284" detail="past events" icon={Clock3} tone="violet" items={['Last engineering session', 'Yesterday’s project search', 'Morning digest run']} /><MemoryFabricCard title="Semantic memory" value="8.4k" detail="indexed chunks" icon={BookOpen} tone="gold" items={['Architecture principles', 'Converter notes', 'Research sources']} /><MemoryFabricCard title="Procedural memory" value="36" detail="learned strategies" icon={Wrench} tone="blue" items={['How to verify simulations', 'Local document workflow', 'Safe file operations']} /></div>
       <section className="panel sources-panel"><PanelHeader eyebrow="INGESTED SOURCES / 1,942 ITEMS" title="Project knowledge" action="Open index" /><div className="sources-list">{KNOWLEDGE_ITEMS.map((item) => <div className="source-row" key={item.title}><ToneIcon icon={item.icon} tone={item.tone} size={17} /><div><strong>{item.title}</strong><span>{item.meta}</span></div><div className="source-indexed"><CircleCheck size={14} /> indexed</div><MoreHorizontal size={16} className="muted-icon" /></div>)}</div></section>
     </div>
@@ -959,7 +972,7 @@ function App() {
       case 'models': return <ModelsView />
       case 'mcp': return <McpView runtime={runtime} runtimeSnapshot={runtimeSnapshot} />
       case 'plugins': return <PluginsView runtime={runtime} runtimeSnapshot={runtimeSnapshot} />
-      case 'knowledge': return <KnowledgeView runtimeSnapshot={runtimeSnapshot} />
+      case 'knowledge': return <KnowledgeView runtime={runtime} runtimeSnapshot={runtimeSnapshot} />
       case 'studio': return <StudioView runtime={runtime} runtimeSnapshot={runtimeSnapshot} />
       case 'devices': return <DevicesView />
       default: return <Dashboard command={command} setCommand={setCommand} runCommand={runCommand} setActiveView={setActiveView} tasks={tasks} onSelectTask={openTask} runtimeSnapshot={runtimeSnapshot} runtimeHealth={runtimeHealth} />

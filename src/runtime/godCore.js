@@ -48,6 +48,7 @@ import { ModelKnowledgeFabric } from './modelKnowledgeFabric.js'
 import { OfflineMemoryJournal } from './offlineMemory.js'
 import { OfflineMediaEngine } from './offlineMedia.js'
 import { McpFabric } from './mcpFabric.js'
+import { OpenSourceKnowledgeModel } from './openSourceKnowledge.js'
 
 export class GodCore {
   constructor({ projectId = 'aetheris-core', projectName = 'Aetheris / Core', online = false, emit = () => {} } = {}) {
@@ -77,6 +78,7 @@ export class GodCore {
     this.observability = new ObservabilityLedger()
     this.resourceManager = new ResourceManager()
     this.network = new NetworkMode({ online })
+    this.openSourceKnowledge = new OpenSourceKnowledgeModel({ knowledge: this.knowledge, memory: this.memory, network: this.network, emit })
     this.plugins = new PluginFabric({ network: this.network, security: this.security, emit })
     this.developer = new DeveloperPlatform({ plugins: this.plugins })
     this.data = new DataLayer()
@@ -109,10 +111,14 @@ export class GodCore {
       'aetheris.core.cancel_task': (args) => this.cancel(args.taskId, args.reason),
       'aetheris.knowledge.search': (args) => this.knowledge.search(args.query || '', args.options || {}),
       'aetheris.knowledge.ingest': (args) => this.knowledge.ingest(args.source || args),
+      'aetheris.knowledge.plan': (args) => this.openSourceKnowledge.plan(args || {}),
+      'aetheris.knowledge.synthesize': (args) => this.openSourceKnowledge.synthesize(args || {}),
+      'aetheris.knowledge.configure_model': (args) => this.openSourceKnowledge.configure(args || {}),
       'aetheris.memory.retrieve': (args) => this.memory.retrieve(args.query || '', args.options || {}),
       'aetheris.memory.update_offline': (args) => { const update = this.offlineMemory.enqueue(args); return { update, flush: this.offlineMemory.flush({ localOnly: true }) } },
       'aetheris.models.list': () => MODEL_DEFINITIONS,
       'aetheris.models.route': (args) => this.router.route(args.understanding || { intent: 'general', complexity: 'low', modalities: ['text'] }, { output: 'default' }),
+      'aetheris.models.prepare_knowledge': (args) => this.openSourceKnowledge.prepare(args || {}),
       'aetheris.media.plan': (args) => this.offlineMedia.plan(args),
       'aetheris.media.render': (args) => this.offlineMedia.render(args.plan || args),
       'aetheris.files.search': (args) => this.files.search(args.query || '', args.options || {}),
@@ -163,6 +169,7 @@ export class GodCore {
     const memoryContext = this.memory.contextFor(understanding.text)
     const knowledgeEvidence = this.knowledge.search(understanding.text)
     const modelKnowledgePlan = this.modelKnowledge.plan({ query: understanding.text, offline: !this.network.online })
+    const openSourceKnowledgePlan = /knowledge|research|rag|citation|source|document/i.test(understanding.text) || ['research', 'document'].includes(understanding.intent) ? this.openSourceKnowledge.plan({ query: understanding.text }) : null
     const offlineMemoryPlan = this.offlineMemory.status()
     const mcpPlan = this.mcp.planForIntent(understanding)
     const mcpHandshake = this.mcp.call('aetheris.core.plan_task', { request: understanding.text }, { approved: true })
@@ -258,6 +265,7 @@ export class GodCore {
       swarm,
       knowledgeEvidence,
       modelKnowledgePlan,
+      openSourceKnowledgePlan,
       offlineMemoryPlan,
       mcpPlan,
       mcpHandshake,
@@ -473,6 +481,7 @@ export class GodCore {
       ['platform', Boolean(this.resourceManager && this.hardware && this.modes)],
       ['extensibility', Boolean(this.plugins && this.developer && this.api)],
       ['model-knowledge', Boolean(this.modelKnowledge && this.offlineMemory)],
+      ['open-source-knowledge', Boolean(this.openSourceKnowledge && this.openSourceKnowledge.modelMetadata())],
       ['offline-media', Boolean(this.offlineMedia)],
       ['mcp-fabric', Boolean(this.mcp && this.mcp.tools.size > 0)],
     ].map(([id, ready]) => ({ id, ready }))
@@ -529,6 +538,7 @@ export class GodCore {
       modelKnowledge: this.modelKnowledge.snapshot(),
       offlineMemory: this.offlineMemory.status(),
       offlineMedia: this.offlineMedia.snapshot(),
+      openSourceKnowledge: this.openSourceKnowledge.snapshot(),
       mcp: this.mcp.snapshot(),
       knowledge: this.knowledge.snapshot(),
       memory: this.memory.snapshot(),

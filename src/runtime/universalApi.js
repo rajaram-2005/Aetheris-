@@ -24,6 +24,9 @@ export class UniversalApi {
     else if (known && route === '/mcp' && method === 'POST' && body.name) data = this.runtime?.mcp?.call(body.name, body.arguments || body.args || {}, { approved: Boolean(body.approved), sessionId })
     else if (known && route === '/mcp') data = { servers: this.runtime?.snapshot().mcp?.serversList || [], tools: this.runtime?.mcp?.discover(body || {}) || [] }
     else if (known && route === '/models') data = this.runtime?.mcp?.call('aetheris.models.list', {}, { approved: true }) || { status: 'adapter-ready', route }
+    else if (known && route === '/knowledge' && body.action === 'plan') data = this.runtime?.openSourceKnowledge?.plan(body) || {}
+    else if (known && route === '/knowledge' && body.action === 'synthesize') data = this.runtime?.openSourceKnowledge?.synthesize(body) || {}
+    else if (known && route === '/knowledge' && body.action === 'configure') data = this.runtime?.openSourceKnowledge?.configure(body) || {}
     else if (known && route === '/knowledge') data = this.runtime?.knowledge?.search(body.query || '', body.options || {}) || []
     else if (known && route === '/memory') data = this.runtime?.memory?.contextFor(body.query || '') || {}
     else if (known && route === '/plugins') data = this.runtime?.plugins?.snapshot() || { status: 'adapter-ready', route }

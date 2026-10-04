@@ -33,6 +33,9 @@ export class ModelRouter {
 
   selectModel({ understanding, modality }) {
     const candidates = MODEL_DEFINITIONS.filter((model) => model.local || this.online)
+    if (['research', 'document'].includes(understanding.intent) || /knowledge|rag|citation|source/i.test(understanding.text || '')) {
+      return candidates.find((model) => model.role === 'open-source knowledge synthesis') || candidates.find((model) => model.type === 'llm') || candidates[0]
+    }
     const desired = modality === 'image' ? 'image'
       : modality === 'video' ? 'video'
         : modality === 'audio' ? 'audio'
