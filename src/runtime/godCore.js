@@ -380,7 +380,7 @@ export class GodCore {
     task.status = 'Paused'
     task.pauseReason = reason
     this.taskState.pause(taskId, reason)
-    this.phaseEngine.pause(taskId)
+    this.phaseEngine.pause(taskId, reason)
     this.executionLoop.pause(taskId, reason)
     this.observability.record(taskId, 'task.paused', { checkpoint: task.checkpoint, reason })
     this.addActivity(task, 'Run paused safely', `${task.checkpoint} checkpoint retained`, 'gold')
@@ -412,7 +412,7 @@ export class GodCore {
       if (![NODE_STATUS.COMPLETED, NODE_STATUS.BLOCKED].includes(node.status)) task.graph.transition(node.id, NODE_STATUS.BLOCKED, { output: 'Cancelled by user' })
     })
     this.taskState.cancel(taskId, reason)
-    this.phaseEngine.cancel(taskId)
+    this.phaseEngine.cancel(taskId, reason)
     this.executionLoop.cancel(taskId, reason)
     this.observability.completeTask(taskId, { status: 'Cancelled', verification: 'not-run' })
     this.resourceManager.release(task.id)

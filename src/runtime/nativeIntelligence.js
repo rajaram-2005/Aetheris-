@@ -69,5 +69,5 @@ export class NativeIntelligenceFabric {
 }
 
 function native(id, name, description, domain, phases, responsibilities) {
-  return { id, name, description, domain, phases, responsibilities, status: 'native-contract', modelPolicy: 'external/open models may be plugged underneath' }
+  return { id, name, description, domain, phases, responsibilities, status: 'native-contract', modelPolicy: 'external/open models remain pluggable underneath' }
 }

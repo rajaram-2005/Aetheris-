@@ -33,6 +33,7 @@ export class ResourceManager {
     Object.entries(allocation.requested).forEach(([key, value]) => { this.usage[key] = Math.max(0, (this.usage[key] || 0) - value) })
     allocation.status = 'released'
     allocation.releasedAt = new Date().toISOString()
+    this.allocations.delete(taskId)
     return allocation
   }
 
