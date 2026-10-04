@@ -101,6 +101,18 @@ export function createAetherisRuntime(options = {}) {
     knowledgeModelSnapshot() {
       return godCore.openSourceKnowledge.snapshot()
     },
+    planNativeIntelligence(options = {}) {
+      return godCore.nativeIntelligence.plan(options)
+    },
+    discoverNativeIntelligence(options = {}) {
+      return godCore.nativeIntelligence.discover(options)
+    },
+    planPhases(options = {}) {
+      return godCore.phaseEngine.plan(options)
+    },
+    observePhaseRun(taskId) {
+      return godCore.phaseEngine.observe(taskId)
+    },
     planOfflineMedia(payload) {
       return godCore.offlineMedia.plan(payload)
     },
@@ -185,3 +197,5 @@ export * from './offlineMedia.js'
 export * from './mcpFabric.js'
 export * from './openSourceKnowledge.js'
 export * from './codingAgent.js'
+export * from './phaseEngine.js'
+export * from './nativeIntelligence.js'

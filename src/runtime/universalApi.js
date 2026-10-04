@@ -1,5 +1,5 @@
 export const API_ROUTES = [
-  '/chat', '/tasks', '/agents', '/models', '/memory', '/knowledge', '/files', '/vision', '/audio', '/image', '/video', '/3d', '/tools', '/mcp', '/workflows', '/apps', '/terminal', '/browser', '/devices', '/simulation', '/evaluate', '/plugins', '/health',
+  '/chat', '/tasks', '/agents', '/models', '/memory', '/knowledge', '/files', '/vision', '/audio', '/image', '/video', '/3d', '/tools', '/mcp', '/workflows', '/apps', '/terminal', '/browser', '/devices', '/simulation', '/evaluate', '/plugins', '/health', '/architecture', '/phases',
 ]
 
 export class UniversalApi {
@@ -31,6 +31,8 @@ export class UniversalApi {
     else if (known && route === '/memory') data = this.runtime?.memory?.contextFor(body.query || '') || {}
     else if (known && route === '/plugins') data = this.runtime?.plugins?.snapshot() || { status: 'adapter-ready', route }
     else if (known && route === '/health') data = this.runtime?.health() || { status: 'adapter-ready', route }
+    else if (known && route === '/architecture') data = { phases: this.runtime?.phaseEngine?.snapshot(), nativeIntelligence: this.runtime?.nativeIntelligence?.snapshot() }
+    else if (known && route === '/phases') data = this.runtime?.phaseEngine?.plan(body || {}) || {}
     else if (known) data = { status: 'adapter-ready', route }
     const response = { requestId: `api-${this.requests.length + 1}`, route, method, known, status: known ? 200 : 404, data, sessionId, createdAt: new Date().toISOString() }
     this.requests.unshift(response)

@@ -49,6 +49,8 @@ import { OfflineMemoryJournal } from './offlineMemory.js'
 import { OfflineMediaEngine } from './offlineMedia.js'
 import { McpFabric } from './mcpFabric.js'
 import { OpenSourceKnowledgeModel } from './openSourceKnowledge.js'
+import { PhaseEngine } from './phaseEngine.js'
+import { NativeIntelligenceFabric } from './nativeIntelligence.js'
 
 export class GodCore {
   constructor({ projectId = 'aetheris-core', projectName = 'Aetheris / Core', online = false, emit = () => {} } = {}) {
@@ -79,6 +81,8 @@ export class GodCore {
     this.resourceManager = new ResourceManager()
     this.network = new NetworkMode({ online })
     this.openSourceKnowledge = new OpenSourceKnowledgeModel({ knowledge: this.knowledge, memory: this.memory, network: this.network, emit })
+    this.phaseEngine = new PhaseEngine({ emit })
+    this.nativeIntelligence = new NativeIntelligenceFabric({ emit })
     this.plugins = new PluginFabric({ network: this.network, security: this.security, emit })
     this.developer = new DeveloperPlatform({ plugins: this.plugins })
     this.data = new DataLayer()
@@ -109,6 +113,10 @@ export class GodCore {
       'aetheris.core.pause_task': (args) => this.pause(args.taskId, args.reason),
       'aetheris.core.resume_task': (args) => this.resume(args.taskId),
       'aetheris.core.cancel_task': (args) => this.cancel(args.taskId, args.reason),
+      'aetheris.native.discover': (args) => this.nativeIntelligence.discover(args || {}),
+      'aetheris.native.plan': (args) => this.nativeIntelligence.plan(args || {}),
+      'aetheris.phases.plan': (args) => this.phaseEngine.plan(args || {}),
+      'aetheris.phases.observe': (args) => this.phaseEngine.observe(args.taskId),
       'aetheris.knowledge.search': (args) => this.knowledge.search(args.query || '', args.options || {}),
       'aetheris.knowledge.ingest': (args) => this.knowledge.ingest(args.source || args),
       'aetheris.knowledge.plan': (args) => this.openSourceKnowledge.plan(args || {}),
@@ -170,6 +178,8 @@ export class GodCore {
     const knowledgeEvidence = this.knowledge.search(understanding.text)
     const modelKnowledgePlan = this.modelKnowledge.plan({ query: understanding.text, offline: !this.network.online })
     const openSourceKnowledgePlan = /knowledge|research|rag|citation|source|document/i.test(understanding.text) || ['research', 'document'].includes(understanding.intent) ? this.openSourceKnowledge.plan({ query: understanding.text }) : null
+    const nativePlan = this.nativeIntelligence.plan({ intent: understanding.intent, text: understanding.text, output: createMultimodalPlan(understanding).output })
+    const phasePlan = this.phaseEngine.plan({ intent: understanding.intent, text: understanding.text, output: createMultimodalPlan(understanding).output, complexity: understanding.complexity })
     const offlineMemoryPlan = this.offlineMemory.status()
     const mcpPlan = this.mcp.planForIntent(understanding)
     const mcpHandshake = this.mcp.call('aetheris.core.plan_task', { request: understanding.text }, { approved: true })
@@ -266,6 +276,8 @@ export class GodCore {
       knowledgeEvidence,
       modelKnowledgePlan,
       openSourceKnowledgePlan,
+      nativePlan,
+      phasePlan,
       offlineMemoryPlan,
       mcpPlan,
       mcpHandshake,
@@ -299,6 +311,7 @@ export class GodCore {
       this.data.link(task.id, evidence.sourceId, 'retrieves')
     })
     this.tasks.set(task.id, task)
+    this.phaseEngine.start(task.id, task.plan.phasePlan)
     this.taskState.create(task)
     this.projectContext.attachTask('aetheris-core', task)
     this.observability.startTask(task)
@@ -345,6 +358,7 @@ export class GodCore {
     task.status = 'Paused'
     task.pauseReason = reason
     this.taskState.pause(taskId, reason)
+    this.phaseEngine.pause(taskId)
     this.executionLoop.pause(taskId, reason)
     this.observability.record(taskId, 'task.paused', { checkpoint: task.checkpoint, reason })
     this.addActivity(task, 'Run paused safely', `${task.checkpoint} checkpoint retained`, 'gold')
@@ -358,6 +372,7 @@ export class GodCore {
     task.status = 'Running'
     task.pauseReason = null
     this.taskState.resume(taskId)
+    this.phaseEngine.resume(taskId)
     this.executionLoop.resume(taskId)
     this.observability.record(taskId, 'task.resumed', { checkpoint: task.checkpoint })
     this.addActivity(task, 'Run resumed', `Continuing from ${task.checkpoint}`, 'mint')
@@ -375,6 +390,7 @@ export class GodCore {
       if (![NODE_STATUS.COMPLETED, NODE_STATUS.BLOCKED].includes(node.status)) task.graph.transition(node.id, NODE_STATUS.BLOCKED, { output: 'Cancelled by user' })
     })
     this.taskState.cancel(taskId, reason)
+    this.phaseEngine.cancel(taskId)
     this.executionLoop.cancel(taskId, reason)
     this.observability.completeTask(taskId, { status: 'Cancelled', verification: 'not-run' })
     this.resourceManager.release(task.id)
@@ -423,6 +439,7 @@ export class GodCore {
         task.graph.transition(nodeId, NODE_STATUS.COMPLETED, { output: outputFor(node, task) })
         this.executionLoop.transition(task.id, loopStageForNode(nodeId), 'completed')
         this.taskState.checkpoint(task.id, nodeId, { status: 'Running' })
+        this.phaseEngine.advance(task.id, { checkpoint: nodeId })
         this.observability.record(task.id, 'node.completed', { nodeId, kind: node.kind, label: node.label })
         task.progress = Math.round((task.graph.completedCount() / task.graph.nodes.size) * 100)
         task.status = nodeId === 'respond' ? 'Completed' : 'Running'
@@ -451,6 +468,7 @@ export class GodCore {
           task.offlineMemory = { update: offlineUpdate, flush: memoryFlush }
           task.media = mediaJob
           this.taskState.complete(task.id, { status: 'Completed', verification: verification.status, outputs: [responseFor(task)] })
+          this.phaseEngine.complete(task.id)
           this.executionLoop.complete(task.id)
           this.projectContext.addConversation('aetheris-core', { role: 'assistant', content: responseFor(task), taskId: task.id })
         }
@@ -482,6 +500,8 @@ export class GodCore {
       ['extensibility', Boolean(this.plugins && this.developer && this.api)],
       ['model-knowledge', Boolean(this.modelKnowledge && this.offlineMemory)],
       ['open-source-knowledge', Boolean(this.openSourceKnowledge && this.openSourceKnowledge.modelMetadata())],
+      ['native-intelligence', Boolean(this.nativeIntelligence && this.nativeIntelligence.snapshot().moduleCount > 0)],
+      ['phase-engine', Boolean(this.phaseEngine && this.phaseEngine.snapshot().totalPhases === 150)],
       ['offline-media', Boolean(this.offlineMedia)],
       ['mcp-fabric', Boolean(this.mcp && this.mcp.tools.size > 0)],
     ].map(([id, ready]) => ({ id, ready }))
@@ -539,6 +559,8 @@ export class GodCore {
       offlineMemory: this.offlineMemory.status(),
       offlineMedia: this.offlineMedia.snapshot(),
       openSourceKnowledge: this.openSourceKnowledge.snapshot(),
+      nativeIntelligence: this.nativeIntelligence.snapshot(),
+      phaseEngine: this.phaseEngine.snapshot(),
       mcp: this.mcp.snapshot(),
       knowledge: this.knowledge.snapshot(),
       memory: this.memory.snapshot(),

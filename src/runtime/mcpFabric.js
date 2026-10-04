@@ -1,5 +1,7 @@
 export const MCP_SERVERS = [
   { id: 'aetheris.core', name: 'Aetheris Core MCP', plane: 'conversation / cognitive', transport: 'in-process', offline: true },
+  { id: 'aetheris.native', name: 'Native Intelligence MCP', plane: 'native agents', transport: 'in-process', offline: true },
+  { id: 'aetheris.phases', name: '150-Phase Engine MCP', plane: 'lifecycle', transport: 'in-process', offline: true },
   { id: 'aetheris.knowledge', name: 'Knowledge MCP', plane: 'memory / knowledge', transport: 'in-process', offline: true },
   { id: 'aetheris.memory', name: 'Memory MCP', plane: 'memory / knowledge', transport: 'in-process', offline: true },
   { id: 'aetheris.models', name: 'Model Fabric MCP', plane: 'model', transport: 'in-process', offline: true },
@@ -31,6 +33,10 @@ export const MCP_TOOLS = [
   tool('aetheris.core.pause_task', 'Pause task', 'aetheris.core', 'conversation', 2, 'Pause a running task at a safe checkpoint.'),
   tool('aetheris.core.resume_task', 'Resume task', 'aetheris.core', 'conversation', 2, 'Resume a paused task from its last safe checkpoint.'),
   tool('aetheris.core.cancel_task', 'Cancel task', 'aetheris.core', 'conversation', 2, 'Cancel a run and release its local resources.'),
+  tool('aetheris.native.discover', 'Discover native intelligence', 'aetheris.native', 'native', 0, 'Discover first-party Aetheris intelligence contracts.'),
+  tool('aetheris.native.plan', 'Plan native intelligence', 'aetheris.native', 'native', 0, 'Select native Aether modules for an intent.'),
+  tool('aetheris.phases.plan', 'Plan 150 phases', 'aetheris.phases', 'lifecycle', 0, 'Create a complete 150-phase lifecycle plan.'),
+  tool('aetheris.phases.observe', 'Observe phase run', 'aetheris.phases', 'lifecycle', 1, 'Read phase progress without private reasoning.'),
   tool('aetheris.knowledge.search', 'Search knowledge', 'aetheris.knowledge', 'memory', 1, 'Search the local vector and graph indexes.'),
   tool('aetheris.knowledge.ingest', 'Ingest knowledge', 'aetheris.knowledge', 'memory', 2, 'Parse and index an approved local source.'),
   tool('aetheris.knowledge.plan', 'Plan open-source RAG', 'aetheris.knowledge', 'memory', 0, 'Plan retrieval, citation, synthesis, verification, and memory write.'),

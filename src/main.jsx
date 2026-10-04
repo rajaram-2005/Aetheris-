@@ -72,11 +72,12 @@ import { createAetherisRuntime } from './runtime/index.js'
 
 const NAV_ITEMS = [
   { id: 'command', label: 'Command center', icon: Command },
+  { id: 'architecture', label: '150-phase engine', icon: Layers3, count: '150' },
   { id: 'workflows', label: 'Workflows', icon: Workflow, count: '04' },
   { id: 'agents', label: 'Agent fabric', icon: Bot, count: '56' },
   { id: 'models', label: 'Model registry', icon: Cpu },
   { id: 'coding', label: 'Coding agent', icon: Code2, count: 'API' },
-  { id: 'mcp', label: 'MCP toolbox', icon: Cable, count: '49' },
+  { id: 'mcp', label: 'MCP toolbox', icon: Cable, count: '53' },
   { id: 'plugins', label: 'Plugin market', icon: Boxes, count: '12' },
   { id: 'knowledge', label: 'Knowledge', icon: BookOpen },
   { id: 'studio', label: 'Creative studio', icon: Sparkles },
@@ -637,6 +638,43 @@ function MemoryMetric({ label, value, detail, icon: Icon, tone }) {
   return <div className="memory-metric"><ToneIcon icon={Icon} tone={tone} size={14} /><div><strong>{value}</strong><span>{label} <i>·</i> {detail}</span></div></div>
 }
 
+function ArchitectureView({ runtime, runtimeSnapshot }) {
+  const architecture = runtimeSnapshot?.phaseEngine || {}
+  const native = runtimeSnapshot?.nativeIntelligence || {}
+  const [selectedGroup, setSelectedGroup] = useState('conversation-intent')
+  const [query, setQuery] = useState('')
+  const phases = (architecture.definitions || []).filter((phase) => (!selectedGroup || phase.groupId === selectedGroup) && (!query || `${phase.number} ${phase.name} ${phase.domain}`.toLowerCase().includes(query.toLowerCase())))
+  const selected = architecture.groups?.find((group) => group.id === selectedGroup)
+  return (
+    <div className="page-content">
+      <PageHeader eyebrow="GOD CORE / UNIVERSAL LIFECYCLE" title={<>One request. <em>150 controlled phases.</em></>} description="Aetheris is not 150 separate models. It is a native execution, verification, memory, and delivery lifecycle with parallel capability tracks." action={{ label: 'Plan sample run', icon: Play }} onAction={() => runtime.planPhases({ intent: 'software', text: 'Implement and test a repository change', output: 'text' })} />
+      <div className="architecture-hero"><div className="architecture-hero-mark"><span>150</span><small>PHASES</small></div><div><span className="panel-eyebrow">AETHERIS 150-PHASE ENGINE</span><h2>Chat is the interface. God Core is the executive layer.</h2><p>Native intelligence modules coordinate models, tools, system fabric, memory, safety, and verification from input to a packaged result.</p><div className="architecture-flow"><span>CHAT</span><ArrowRight size={13} /><span>GOD CORE</span><ArrowRight size={13} /><span>150 PHASES</span><ArrowRight size={13} /><span>VERIFIED RESULT</span></div></div><div className="architecture-hero-stat"><strong>{architecture.activeRuns || 0}</strong><span>active phase runs</span><Pill tone="mint" dot>native contracts online</Pill></div></div>
+      <section className="panel native-intelligence-panel"><PanelHeader eyebrow={`NATIVE AETHERIS INTELLIGENCE / ${native.moduleCount || 0} MODULES`} title="First-party capability contracts" action="External models remain pluggable" /><div className="native-module-grid">{(native.modules || []).map((module) => <div className="native-module-card" key={module.id}><div className="native-module-head"><ToneIcon icon={nativeIcon(module.domain)} tone={nativeTone(module.domain)} size={17} /><span>{module.phaseRange || `${module.phases[0]}–${module.phases[1]}`}</span></div><strong>{module.name}</strong><p>{module.description}</p><div className="native-responsibilities">{module.responsibilities.slice(0, 3).map((item) => <span key={item}>{item}</span>)}</div></div>)}</div></section>
+      <div className="architecture-toolbar"><div className="search-box wide"><Search size={16} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search phase number, name, or domain" /></div><span className="toolbar-note"><span className="status-dot mint pulse" /> {architecture.totalPhases || 150} definitions <span className="slash">/</span> parallel tracks enabled</span></div>
+      <div className="phase-engine-layout"><section className="panel phase-groups-panel"><PanelHeader eyebrow="14 PARTS / 150 PHASES" title="Lifecycle map" action="Select a part" /><div className="phase-group-list">{(architecture.groups || []).map((group) => <button key={group.id} className={`phase-group-row ${selectedGroup === group.id ? 'selected' : ''}`} onClick={() => setSelectedGroup(group.id)}><span className={`phase-group-number ${group.tone}`}>{String(group.start).padStart(2, '0')}</span><div><strong>{group.name}</strong><span>Phases {group.start}–{group.end} · {group.domain}</span></div><b>{group.count}</b><ChevronRight size={14} /></button>)}</div></section><section className="panel phase-detail-panel"><PanelHeader eyebrow={`PHASES ${selected?.start || 1}–${selected?.end || 10} / ${selected?.domain || 'lifecycle'}`} title={selected?.name || 'Conversation & intent'} action={`${phases.length} visible`} /><div className="phase-definition-list">{phases.map((phase) => <div className="phase-definition-row" key={phase.id}><span className={`phase-number ${phase.tone}`}>{String(phase.number).padStart(3, '0')}</span><div><strong>{phase.name}</strong><span>{phase.domain} intelligence contract</span></div>{phase.parallel && <Pill tone="violet">parallel</Pill>}<StatusDot tone={phase.parallel ? 'violet' : 'mint'} /></div>)}</div></section></div>
+    </div>
+  )
+}
+
+function nativeIcon(domain) {
+  if (domain === 'coding' || domain === 'terminal') return Code2
+  if (domain === 'research' || domain === 'knowledge') return BookOpen
+  if (domain === 'image' || domain === 'vision') return Image
+  if (domain === 'video') return Video
+  if (domain === 'audio') return AudioLines
+  if (domain === 'science' || domain === 'engineering') return FlaskConical
+  if (domain === 'computer' || domain === 'device' || domain === 'industrial') return Monitor
+  if (domain === '3d') return Box
+  return BrainCircuit
+}
+
+function nativeTone(domain) {
+  if (['coding', 'knowledge', 'terminal'].includes(domain)) return 'mint'
+  if (['research', 'image', 'video', '3d'].includes(domain)) return 'violet'
+  if (['science', 'engineering', 'device', 'industrial'].includes(domain)) return 'gold'
+  return 'blue'
+}
+
 function WorkflowsView({ setActiveView, openTask }) {
   return (
     <div className="page-content">
@@ -1009,6 +1047,7 @@ function App() {
 
   const renderView = () => {
     switch (activeView) {
+      case 'architecture': return <ArchitectureView runtime={runtime} runtimeSnapshot={runtimeSnapshot} />
       case 'workflows': return <WorkflowsView setActiveView={setActiveView} openTask={openTask} />
       case 'agents': return <AgentsView />
       case 'models': return <ModelsView />
