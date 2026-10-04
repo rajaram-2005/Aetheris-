@@ -77,7 +77,7 @@ export class GodCore {
     this.observability = new ObservabilityLedger()
     this.resourceManager = new ResourceManager()
     this.network = new NetworkMode({ online })
-    this.plugins = new PluginFabric({ network: this.network, security: this.security })
+    this.plugins = new PluginFabric({ network: this.network, security: this.security, emit })
     this.developer = new DeveloperPlatform({ plugins: this.plugins })
     this.data = new DataLayer()
     this.training = new TrainingFabric()
@@ -137,8 +137,13 @@ export class GodCore {
       'aetheris.industrial.plan_action': (args) => this.industrial.planAction(args.deviceId || 'converter-plc', args.action || 'validate', { simulation: true, authorized: false }),
       'aetheris.twin.simulate': (args) => this.digitalTwin.simulate(args.twinId || 'project-atlas-twin', args.scenario || {}),
       'aetheris.data.query': (args) => this.data.query(args.table || 'tasks', args.predicate || (() => true)),
-      'aetheris.plugins.discover': (args) => this.plugins.resolve(args.capability || ''),
+      'aetheris.plugins.discover': (args) => this.plugins.discover(args || {}),
       'aetheris.plugins.register': (args) => this.plugins.register(args.plugin || args),
+      'aetheris.plugins.install': (args, context) => this.plugins.install(args.pluginId, { approved: context.approved || args.approved }),
+      'aetheris.plugins.enable': (args) => this.plugins.enable(args.pluginId),
+      'aetheris.plugins.disable': (args) => this.plugins.disable(args.pluginId),
+      'aetheris.plugins.uninstall': (args) => this.plugins.uninstall(args.pluginId),
+      'aetheris.plugins.invoke': (args, context) => this.plugins.invoke(args.pluginId, args.capability, args.input || {}, { approved: context.approved || args.approved, context }),
       'aetheris.training.plan': (args) => this.training.plan(args),
       'aetheris.observability.trace': (args) => this.observability.get(args.taskId),
     }})

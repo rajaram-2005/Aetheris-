@@ -44,6 +44,24 @@ export function createAetherisRuntime(options = {}) {
     registerPlugin(plugin) {
       return godCore.plugins.register(plugin)
     },
+    discoverPlugins(options = {}) {
+      return godCore.plugins.discover(options)
+    },
+    installPlugin(pluginId, options = {}) {
+      return godCore.plugins.install(pluginId, options)
+    },
+    enablePlugin(pluginId) {
+      return godCore.plugins.enable(pluginId)
+    },
+    disablePlugin(pluginId) {
+      return godCore.plugins.disable(pluginId)
+    },
+    uninstallPlugin(pluginId) {
+      return godCore.plugins.uninstall(pluginId)
+    },
+    invokePlugin(pluginId, capability, input = {}, options = {}) {
+      return godCore.plugins.invoke(pluginId, capability, input, options)
+    },
     defineCapability(manifest) {
       return godCore.developer.define(manifest)
     },

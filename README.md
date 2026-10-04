@@ -40,4 +40,6 @@ The MCP toolbox exposes 40 permissioned tools across 23 in-process servers cover
 
 Task runs are now operationally controllable: pause at a safe checkpoint, resume from the last checkpoint, cancel and release resources, or control the same lifecycle through `/tasks`, `/tools`, and `/mcp` API requests. Local task state and audit events remain resumable without storing private chain-of-thought.
 
+The Plugin Market now includes a local-first plugin registry with MCP, SDK, API, WASM, and LOCAL protocol metadata; manifest validation; capability and scope declarations; trust labels; install, enable, disable, and uninstall lifecycle controls; local persistence; invocation auditing; and a developer manifest builder. Network, device, and industrial scopes remain explicitly gated, and built-in plugins cannot be removed.
+
 This is an interface and local runtime prototype; real model providers, storage, OS, and device adapters can be connected behind the existing control-plane contracts.

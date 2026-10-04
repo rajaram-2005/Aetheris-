@@ -75,7 +75,8 @@ const NAV_ITEMS = [
   { id: 'workflows', label: 'Workflows', icon: Workflow, count: '04' },
   { id: 'agents', label: 'Agent fabric', icon: Bot, count: '56' },
   { id: 'models', label: 'Model registry', icon: Cpu },
-  { id: 'mcp', label: 'MCP toolbox', icon: Cable, count: '40' },
+  { id: 'mcp', label: 'MCP toolbox', icon: Cable, count: '46' },
+  { id: 'plugins', label: 'Plugin market', icon: Boxes, count: '12' },
   { id: 'knowledge', label: 'Knowledge', icon: BookOpen },
   { id: 'studio', label: 'Creative studio', icon: Sparkles },
   { id: 'devices', label: 'Devices & system', icon: Monitor },
@@ -763,6 +764,67 @@ function McpView({ runtime, runtimeSnapshot }) {
     </div>
   )
 }
+const DEFAULT_PLUGIN_MANIFEST = {
+  id: 'local-example-plugin',
+  name: 'Local Example Plugin',
+  description: 'A scoped capability package for Aetheris.',
+  protocol: 'SDK',
+  version: '0.1.0',
+  capabilities: ['example'],
+  scopes: ['sandbox'],
+  permissions: ['compute'],
+}
+
+function PluginsView({ runtime, runtimeSnapshot }) {
+  const [query, setQuery] = useState('')
+  const [protocol, setProtocol] = useState('all')
+  const [selectedId, setSelectedId] = useState(null)
+  const [notice, setNotice] = useState(null)
+  const [manifestText, setManifestText] = useState(JSON.stringify(DEFAULT_PLUGIN_MANIFEST, null, 2))
+  const [showBuilder, setShowBuilder] = useState(false)
+  const [refresh, setRefresh] = useState(0)
+  const snapshot = runtime.snapshot().plugins || runtimeSnapshot?.plugins || {}
+  const plugins = runtime.discoverPlugins({ query, protocol: protocol === 'all' ? undefined : protocol })
+  const selected = plugins.find((plugin) => plugin.id === selectedId) || (selectedId ? runtime.discoverPlugins({ query: selectedId }).find((plugin) => plugin.id === selectedId) : null)
+  const refreshView = () => setRefresh((value) => value + 1)
+  const runPluginAction = (plugin) => {
+    const result = plugin.status === 'available' || plugin.status === 'registered'
+      ? runtime.installPlugin(plugin.id)
+      : plugin.status === 'disabled' ? runtime.enablePlugin(plugin.id) : runtime.disablePlugin(plugin.id)
+    setNotice({ title: plugin.name, status: result.status, detail: result.reason || (plugin.status === 'connected' ? 'Plugin disabled without removing its manifest.' : 'Plugin lifecycle updated.') })
+    refreshView()
+  }
+  const invokeSelected = () => {
+    if (!selected) return
+    const result = runtime.invokePlugin(selected.id, selected.capabilities[0], { preview: true }, { approved: selected.scopes.includes('network') ? false : true })
+    setNotice({ title: `${selected.name} / ${selected.capabilities[0]}`, status: result.status, detail: typeof result.output === 'string' ? result.output : 'Structured plugin observation returned.' })
+    refreshView()
+  }
+  const registerManifest = () => {
+    try {
+      const definition = runtime.registerPlugin(JSON.parse(manifestText))
+      setNotice({ title: definition.name || 'Plugin manifest', status: definition.status, detail: definition.validation?.valid ? 'Manifest registered and ready for local installation.' : definition.validation.errors.join(' · ') })
+      if (definition.id) setSelectedId(definition.id)
+      setShowBuilder(false)
+      refreshView()
+    } catch (error) {
+      setNotice({ title: 'Manifest parser', status: 'invalid-input', detail: error.message })
+    }
+  }
+  return (
+    <div className="page-content">
+      <PageHeader eyebrow="EXTENSIBILITY PLANE / MCP + SDK + API" title={<>Build your own <em>capabilities.</em></>} description="Install, scope, inspect, and invoke plugins without giving them more access than the manifest declares." action={{ label: showBuilder ? 'Close builder' : 'Build plugin', icon: showBuilder ? X : Plus }} onAction={() => setShowBuilder(!showBuilder)} />
+      <div className="plugin-health-grid"><div className="plugin-health-card"><div className="plugin-health-icon mint"><Boxes size={18} /></div><div><span>REGISTERED</span><strong>{snapshot.registered || 0}</strong><small>local manifests</small></div></div><div className="plugin-health-card"><div className="plugin-health-icon violet"><Cable size={18} /></div><div><span>CONNECTED</span><strong>{snapshot.connected || 0}</strong><small>routing eligible</small></div></div><div className="plugin-health-card"><div className="plugin-health-icon gold"><ShieldCheck size={18} /></div><div><span>VERIFIED</span><strong>{Math.max(0, (snapshot.registered || 0) - (snapshot.invalid || 0))}</strong><small>policy checked</small></div></div><div className="plugin-health-card"><div className="plugin-health-icon blue"><Activity size={18} /></div><div><span>INVOCATIONS</span><strong>{snapshot.invocations || 0}</strong><small>local audit trail</small></div></div></div>
+      {showBuilder && <section className="panel plugin-builder"><PanelHeader eyebrow="DEVELOPER SDK / MANIFEST" title="Register a scoped plugin" action="JSON manifest" /><div className="plugin-builder-body"><div><p className="muted-paragraph">A plugin becomes routable only after its identity, protocol, capabilities, scopes, and permissions validate. Device and network scopes remain gated at invocation time.</p><div className="plugin-contract-tags"><Pill tone="mint" dot>Schema validated</Pill><Pill tone="neutral">Sandbox first</Pill><Pill tone="neutral">No hidden access</Pill></div></div><div className="plugin-manifest-editor"><textarea value={manifestText} onChange={(event) => setManifestText(event.target.value)} spellCheck="false" /><button className="primary-small" onClick={registerManifest}><Check size={14} /> Validate & register</button></div></div></section>}
+      <div className="plugin-toolbar"><div className="search-box wide"><Search size={16} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search plugins and capabilities" /></div><select className="mcp-server-select" value={protocol} onChange={(event) => setProtocol(event.target.value)}><option value="all">All protocols</option><option value="MCP">MCP</option><option value="SDK">SDK</option><option value="API">API</option></select><span className="toolbar-note"><span className="status-dot mint pulse" /> local registry <span className="slash">/</span> {plugins.length} results</span></div>
+      {notice && <div className={`plugin-notice ${['blocked', 'invalid-input', 'error'].includes(notice.status) ? 'blocked' : ''}`}><CircleCheck size={15} /><span><strong>{notice.title}</strong> · {notice.status} · {notice.detail}</span><button onClick={() => setNotice(null)}><X size={14} /></button></div>}
+      <div className="plugin-workbench"><section className="panel plugin-panel"><PanelHeader eyebrow={`PLUGIN CATALOG / ${plugins.length} RESULTS`} title="Capability marketplace" action="Trust policy" /><div className="plugin-grid">{plugins.map((plugin) => <button className={`plugin-card ${selected?.id === plugin.id ? 'selected' : ''}`} key={`${plugin.id}-${refresh}`} onClick={() => setSelectedId(plugin.id)}><div className="plugin-card-head"><ToneIcon icon={plugin.protocol === 'MCP' ? Cable : plugin.protocol === 'API' ? Globe2 : Boxes} tone={plugin.status === 'connected' ? 'mint' : plugin.status === 'invalid' ? 'coral' : 'violet'} size={17} /><span className={`plugin-status ${plugin.status}`}>{plugin.status}</span></div><strong>{plugin.name}</strong><span className="plugin-id">{plugin.id} · v{plugin.version}</span><p>{plugin.description}</p><div className="plugin-capabilities">{plugin.capabilities.slice(0, 3).map((capability) => <span key={capability}>{capability}</span>)}</div><div className="plugin-card-foot"><span>{plugin.protocol} · {plugin.trust}</span><ChevronRight size={14} /></div></button>)}</div></section>
+        <aside className="panel plugin-inspector">{selected ? <><div className="plugin-inspector-head"><div><span className="panel-eyebrow">PLUGIN INSPECTOR / {selected.protocol}</span><h3>{selected.name}</h3></div><span className={`plugin-status ${selected.status}`}>{selected.status}</span></div><p className="plugin-inspector-description">{selected.description}</p><div className="plugin-detail-list"><div><span>IDENTIFIER</span><strong>{selected.id}</strong></div><div><span>VERSION</span><strong>{selected.version}</strong></div><div><span>TRUST</span><strong>{selected.trust}</strong></div><div><span>PERMISSIONS</span><strong>{selected.permissions.join(' · ')}</strong></div></div><span className="panel-eyebrow">DECLARED CAPABILITIES</span><div className="plugin-detail-chips">{selected.capabilities.map((capability) => <Pill key={capability} tone="neutral">{capability}</Pill>)}</div><span className="panel-eyebrow">SCOPES</span><div className="plugin-detail-chips">{selected.scopes.map((scope) => <Pill key={scope} tone={scope === 'network' || scope === 'industrial' ? 'gold' : 'mint'} icon={scope === 'network' || scope === 'industrial' ? LockKeyhole : ShieldCheck}>{scope}</Pill>)}</div><div className="plugin-inspector-actions"><button className="secondary-button" onClick={() => runPluginAction(selected)}>{selected.status === 'connected' ? <><X size={14} /> Disable</> : <><Zap size={14} /> {selected.status === 'disabled' ? 'Enable' : 'Install'}</>}</button><button className="primary-small" onClick={invokeSelected} disabled={selected.status !== 'connected'}><Play size={14} /> Test capability</button></div></> : <div className="mcp-empty"><Boxes size={25} /><strong>Select a plugin</strong><span>Inspect trust, permissions, scopes, and lifecycle actions before it enters routing.</span></div>}</aside>
+      </div>
+    </div>
+  )
+}
+
 function KnowledgeView({ runtimeSnapshot }) {
   const modelKnowledge = runtimeSnapshot?.modelKnowledge || {}
   const offlineMemory = runtimeSnapshot?.offlineMemory || {}
@@ -896,6 +958,7 @@ function App() {
       case 'agents': return <AgentsView />
       case 'models': return <ModelsView />
       case 'mcp': return <McpView runtime={runtime} runtimeSnapshot={runtimeSnapshot} />
+      case 'plugins': return <PluginsView runtime={runtime} runtimeSnapshot={runtimeSnapshot} />
       case 'knowledge': return <KnowledgeView runtimeSnapshot={runtimeSnapshot} />
       case 'studio': return <StudioView runtime={runtime} runtimeSnapshot={runtimeSnapshot} />
       case 'devices': return <DevicesView />

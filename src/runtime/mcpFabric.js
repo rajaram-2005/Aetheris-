@@ -63,6 +63,11 @@ export const MCP_TOOLS = [
   tool('aetheris.data.query', 'Query data layer', 'aetheris.data', 'data', 1, 'Query scoped relational, vector, graph, file, or object data.'),
   tool('aetheris.plugins.discover', 'Discover plugins', 'aetheris.plugins', 'developer', 0, 'Discover MCP, API, and SDK capabilities.'),
   tool('aetheris.plugins.register', 'Register plugin', 'aetheris.plugins', 'developer', 2, 'Register a validated capability plugin.'),
+  tool('aetheris.plugins.install', 'Install plugin', 'aetheris.plugins', 'developer', 2, 'Install a local or approved plugin package.'),
+  tool('aetheris.plugins.enable', 'Enable plugin', 'aetheris.plugins', 'developer', 2, 'Enable a validated plugin for routing.'),
+  tool('aetheris.plugins.disable', 'Disable plugin', 'aetheris.plugins', 'developer', 2, 'Disable a plugin without deleting its manifest.'),
+  tool('aetheris.plugins.uninstall', 'Uninstall plugin', 'aetheris.plugins', 'developer', 2, 'Remove a user-installed plugin package.'),
+  tool('aetheris.plugins.invoke', 'Invoke plugin', 'aetheris.plugins', 'developer', 3, 'Invoke a declared plugin capability inside its policy scope.'),
   tool('aetheris.training.plan', 'Plan training', 'aetheris.training', 'training', 2, 'Create a safe training and evaluation plan.'),
   tool('aetheris.observability.trace', 'Read trace', 'aetheris.observability', 'observability', 1, 'Read audit events without private chain-of-thought.'),
 ]
