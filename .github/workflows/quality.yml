@@ -35,3 +35,6 @@ jobs:
 
       - name: Check whitespace
         run: git diff --check
+
+      - name: Report meaningful line count
+        run: npm run lines

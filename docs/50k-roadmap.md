@@ -94,5 +94,7 @@ The continuous roadmap run has also completed the first implementation slice of 
 - Gate 2: versioned phase snapshots, restart recovery, bounded event history, paginated history, JSON/NDJSON audit export, scheduler fault handling, API/MCP idempotency, and malformed-storage handling.
 - Gate 3: versioned native Aetheris capability contracts for all 15 first-party modules, input validation, approval gates, adapter-boundary execution results, and `/native` API access.
 - Gate 4: validated workflow DAGs with retries, timeouts, compensation planning, checkpoints, approval, pause/resume/cancel, recovery, and controlled workflow API transitions.
+- Gate 5 slice: the operator console now filters phase events, exports local audit data, recovers persisted phase runs through direct phase controls, and exposes readiness plus structured API envelopes.
+- Gate 6 slice: CI runs tests, production build, whitespace checks, and the meaningful line-count report.
 
 The remaining gates continue in the same order with the quality suite running after each increment; no line-count padding is used.

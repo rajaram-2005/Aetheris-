@@ -38,6 +38,18 @@ test('universal API exposes local language, phase, and observability routes', ()
   assert.equal(overview.status, 200)
   assert.equal(overview.data.phaseEngine.totalPhases, 150)
   assert.equal(typeof overview.data.taskLedger.events, 'number')
+
+  const readiness = runtime.request('/ready')
+  assert.equal(readiness.status, 200)
+  assert.equal(readiness.data.status, 'ready')
+  assert.equal(readiness.data.checks.every((check) => check.ready), true)
+
+  const missingRoute = runtime.request('/not-a-route')
+  assert.equal(missingRoute.status, 404)
+  assert.equal(missingRoute.error.code, 'ROUTE_NOT_FOUND')
+  const malformedChat = runtime.request('/chat', { method: 'POST', body: {} })
+  assert.equal(malformedChat.status, 400)
+  assert.equal(malformedChat.error.code, 'INVALID_REQUEST')
 })
 
 test('a submitted full run is observable through runtime methods and API history', async () => {

@@ -1,5 +1,5 @@
 export const API_ROUTES = [
-  '/chat', '/input', '/language', '/tasks', '/agents', '/models', '/memory', '/knowledge', '/files', '/vision', '/audio', '/image', '/video', '/3d', '/tools', '/mcp', '/workflows', '/apps', '/terminal', '/browser', '/devices', '/simulation', '/evaluate', '/plugins', '/health', '/architecture', '/native', '/phases', '/observability',
+  '/chat', '/input', '/language', '/tasks', '/agents', '/models', '/memory', '/knowledge', '/files', '/vision', '/audio', '/image', '/video', '/3d', '/tools', '/mcp', '/workflows', '/apps', '/terminal', '/browser', '/devices', '/simulation', '/evaluate', '/plugins', '/health', '/ready', '/architecture', '/native', '/phases', '/observability',
 ]
 
 export class UniversalApi {
@@ -18,6 +18,7 @@ export class UniversalApi {
     if (replayKey && this.idempotency.has(replayKey)) return { ...this.idempotency.get(replayKey), replayed: true }
     let data = null
     if (known && route === '/chat' && method === 'POST' && body.message) data = this.runtime?.submit(body.message, body.context || {})
+    else if (known && route === '/chat' && method === 'POST') data = null
     else if (known && route === '/input' && method === 'POST') data = this.runtime?.inputReception?.receive(body.input || body, { source: body.source || 'api', sessionId })
     else if (known && route === '/language' && method === 'POST') data = this.runtime?.languageDetection?.detect(body.input || body)
     else if (known && route === '/tasks' && body.id && body.action === 'approve') data = this.runtime?.approve(body.id)
@@ -49,6 +50,7 @@ export class UniversalApi {
     else if (known && route === '/memory') data = this.runtime?.memory?.contextFor(body.query || '') || {}
     else if (known && route === '/plugins') data = this.runtime?.plugins?.snapshot() || { status: 'adapter-ready', route }
     else if (known && route === '/health') data = this.runtime?.health() || { status: 'adapter-ready', route }
+    else if (known && route === '/ready') data = this.runtime?.readiness() || { status: 'adapter-ready', route }
     else if (known && route === '/architecture') data = { phases: this.runtime?.phaseEngine?.snapshot(), nativeIntelligence: this.runtime?.nativeIntelligence?.snapshot() }
     else if (known && route === '/native' && body.action === 'contract') data = this.runtime?.nativeIntelligence?.contract(body.moduleId) || {}
     else if (known && route === '/native' && body.action === 'validate') data = this.runtime?.nativeIntelligence?.validate(body.moduleId, body.operation, body.input || {}) || {}

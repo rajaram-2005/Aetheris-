@@ -665,6 +665,7 @@ function ObservabilityView({ runtime, runtimeSnapshot, onNotify }) {
   const engine = runtimeSnapshot?.phaseEngine || {}
   const runs = engine.recentRuns || []
   const [selectedId, setSelectedId] = useState(null)
+  const [eventFilter, setEventFilter] = useState('all')
   const selectedRun = runs.find((run) => run.taskId === selectedId) || runs[0] || null
   const definitions = engine.definitions || []
   const groups = engine.groups || []
@@ -722,6 +723,7 @@ function ObservabilityView({ runtime, runtimeSnapshot, onNotify }) {
     notify('Audit export ready', `${selectedRun.taskId} event history exported locally.`)
   }
   const selectedEvents = selectedRun?.events || []
+  const filteredEvents = selectedEvents.filter((event) => eventFilter === 'all' || (eventFilter === 'phase' && event.type.startsWith('phase.')) || (eventFilter === 'control' && ['run.paused', 'run.resumed', 'run.cancelled', 'manual.step-requested'].includes(event.type)) || (eventFilter === 'run' && event.type.startsWith('run.')))
   const selectedActions = selectedRun?.actions || []
   const canPause = selectedRun?.status === 'running'
   const canResume = selectedRun?.status === 'paused'
@@ -760,7 +762,7 @@ function ObservabilityView({ runtime, runtimeSnapshot, onNotify }) {
         <div className="observability-group-grid">{groupSummary.map((group) => <div className="observability-group-card" key={group.id}><div className="observability-group-head"><span className={`phase-group-number ${group.tone}`}>{String(group.start).padStart(2, '0')}</span><div><strong>{group.name.replace(/^Part [IVX]+ — /, '')}</strong><span>{group.domain} · {group.completed}/{group.count} complete</span></div><b>{group.running ? 'LIVE' : `${Math.round((group.completed / Math.max(group.count, 1)) * 100)}%`}</b></div><div className="observability-phase-cells">{definitions.filter((phase) => phase.number >= group.start && phase.number <= group.end).map((phase) => { const state = phasesByNumber.get(phase.number)?.status || 'not-started'; return <span key={phase.id} className={`observability-phase-cell ${state}`} title={`Phase ${phase.number} · ${phase.name} · ${state}`} /> })}</div></div>)}</div>
       </section>
       <div className="observability-detail-grid">
-        <section className="panel observability-events-panel"><PanelHeader eyebrow="EVENT STREAM / NEWEST FIRST" title="Runtime events" action={`${selectedEvents.length} in run`} /><div className="observability-events">{selectedEvents.length ? selectedEvents.slice(0, 12).map((event) => <div className="observability-event" key={event.id}><ToneIcon icon={phaseEventIcon(event.type)} tone={phaseTone(event.status)} size={16} /><div><strong>{phaseEventLabel(event.type)}</strong><span>{event.data?.name || (event.phase ? `Phase ${String(event.phase).padStart(3, '0')}` : 'Run ledger')} {event.checkpoint ? ` · ${event.checkpoint}` : ''}</span></div><time>{formatEventTime(event.time)}</time></div>) : <div className="observability-empty"><CircleDashed size={19} /><span>No events recorded yet.</span></div>}</div></section>
+        <section className="panel observability-events-panel"><PanelHeader eyebrow="EVENT STREAM / NEWEST FIRST" title="Runtime events" action={`${filteredEvents.length}/${selectedEvents.length}`} /><div className="observability-event-filters">{['all', 'run', 'phase', 'control'].map((filter) => <button key={filter} className={eventFilter === filter ? 'active' : ''} onClick={() => setEventFilter(filter)}><Filter size={11} /> {filter}</button>)}</div><div className="observability-events">{filteredEvents.length ? filteredEvents.slice(0, 12).map((event) => <div className="observability-event" key={event.id}><ToneIcon icon={phaseEventIcon(event.type)} tone={phaseTone(event.status)} size={16} /><div><strong>{phaseEventLabel(event.type)}</strong><span>{event.data?.name || (event.phase ? `Phase ${String(event.phase).padStart(3, '0')}` : 'Run ledger')} {event.checkpoint ? ` · ${event.checkpoint}` : ''}</span></div><time>{formatEventTime(event.time)}</time></div>) : <div className="observability-empty"><CircleDashed size={19} /><span>No events match this filter.</span></div>}</div></section>
         <section className="panel observability-actions-panel"><PanelHeader eyebrow="ORDERED ACTION HISTORY" title="Phase operations" action={`${selectedActions.length} actions`} /><div className="observability-actions">{selectedActions.length ? selectedActions.slice(-10).reverse().map((action) => <div className="observability-action" key={`${action.id}-${action.completedAt}`}><span className={`observability-action-number ${action.status}`}>{String(action.phase).padStart(3, '0')}</span><div><strong>{action.name}</strong><span>{action.domain} · {action.operation}</span></div><time>{formatEventTime(action.completedAt)}</time></div>) : <div className="observability-empty"><ListTodo size={19} /><span>Completed phase operations will appear here.</span></div>}</div></section>
       </div>
     </div>

@@ -530,6 +530,18 @@ export class GodCore {
     return { status: checks.every((check) => check.ready) ? 'healthy' : 'degraded', checks, localFirst: !snapshot.online, connectedSections: 62, phaseGroups: 6, timestamp: new Date().toISOString() }
   }
 
+  readiness() {
+    const health = this.health()
+    const phase = this.phaseEngine.snapshot()
+    const checks = [
+      { id: 'health', ready: health.status === 'healthy' },
+      { id: 'phase-persistence', ready: phase.persistence.available || phase.persistence.version === 1 },
+      { id: 'workflow-contracts', ready: Boolean(this.workflow && this.workflow.snapshot().ready >= 0) },
+      { id: 'native-contracts', ready: this.nativeIntelligence.snapshot().contractCount === this.nativeIntelligence.snapshot().moduleCount },
+    ]
+    return { status: checks.every((check) => check.ready) ? 'ready' : 'not-ready', checks, localFirst: health.localFirst, timestamp: new Date().toISOString() }
+  }
+
   snapshot() {
     return {
       planes: PLANE_DEFINITIONS,

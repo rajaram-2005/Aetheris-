@@ -43,6 +43,9 @@ export function createAetherisRuntime(options = {}) {
     health() {
       return godCore.health()
     },
+    readiness() {
+      return godCore.readiness()
+    },
     ingestKnowledge(source) {
       return godCore.knowledge.ingest(source)
     },
