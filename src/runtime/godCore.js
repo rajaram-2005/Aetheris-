@@ -117,6 +117,7 @@ export class GodCore {
       'aetheris.native.plan': (args) => this.nativeIntelligence.plan(args || {}),
       'aetheris.phases.plan': (args) => this.phaseEngine.plan(args || {}),
       'aetheris.phases.observe': (args) => this.phaseEngine.observe(args.taskId),
+      'aetheris.phases.advance': (args) => this.phaseEngine.step(args.taskId),
       'aetheris.knowledge.search': (args) => this.knowledge.search(args.query || '', args.options || {}),
       'aetheris.knowledge.ingest': (args) => this.knowledge.ingest(args.source || args),
       'aetheris.knowledge.plan': (args) => this.openSourceKnowledge.plan(args || {}),

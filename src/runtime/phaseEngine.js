@@ -96,60 +96,90 @@ export class PhaseEngine {
 
   start(taskId, plan) {
     const active = plan.phases.filter((phase) => phase.status === 'queued').map((phase) => phase.number)
-    const run = { taskId, totalPhases: 150, activePhases: active.length, completed: [], current: active[0] || 1, status: 'running', startedAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
+    const phases = plan.phases.map((phase) => ({ ...phase, status: active.includes(phase.number) ? (phase.number === active[0] ? 'running' : 'queued') : 'not-applicable' }))
+    const run = { taskId, totalPhases: 150, activePhases: active.length, completed: [], current: active[0] || null, currentPhase: phases.find((phase) => phase.number === active[0]) || null, phases, status: 'running', startedAt: new Date().toISOString(), updatedAt: new Date().toISOString(), progress: 0 }
     this.runs.set(taskId, run)
-    this.emit({ type: 'phase-engine.started', run })
+    this.emit({ type: 'phase-engine.started', run: this.publicRun(run) })
     return run
   }
 
   advance(taskId, { checkpoint, complete = true } = {}) {
     const run = this.runs.get(taskId)
     if (!run || run.status !== 'running') return run || null
-    const next = run.current
-    if (complete && !run.completed.includes(next)) run.completed.push(next)
-    const activeSet = new Set(run.completed)
-    run.current = Math.min(...[...activeSet].map((number) => number + 1).filter((number) => number <= 150).concat([next + 1]))
+    const currentNumber = run.current
+    const currentPhase = run.phases.find((phase) => phase.number === currentNumber)
+    if (complete && currentPhase && currentPhase.status !== 'completed') {
+      currentPhase.status = 'completed'
+      currentPhase.completedAt = new Date().toISOString()
+      if (!run.completed.includes(currentNumber)) run.completed.push(currentNumber)
+    }
+    const nextPhase = run.phases.find((phase) => phase.status === 'queued')
+    if (nextPhase) {
+      nextPhase.status = 'running'
+      run.current = nextPhase.number
+      run.currentPhase = nextPhase
+    } else {
+      run.current = null
+      run.currentPhase = null
+    }
     run.updatedAt = new Date().toISOString()
     run.checkpoint = checkpoint
     run.progress = Math.round((run.completed.length / Math.max(run.activePhases, 1)) * 100)
-    this.emit({ type: 'phase-engine.advanced', run })
+    this.emit({ type: 'phase-engine.advanced', run: this.publicRun(run) })
     return run
+  }
+
+  step(taskId) {
+    const run = this.runs.get(taskId)
+    if (!run || ['completed', 'cancelled'].includes(run.status)) return run || null
+    run.status = 'running'
+    return this.advance(taskId, { checkpoint: 'manual-phase-step' })
   }
 
   complete(taskId) {
     const run = this.runs.get(taskId)
     if (!run) return null
+    run.phases.forEach((phase) => { if (phase.status === 'running' || phase.status === 'queued') { phase.status = 'completed'; phase.completedAt = new Date().toISOString() } })
+    run.completed = run.phases.filter((phase) => phase.status === 'completed').map((phase) => phase.number)
+    run.current = null
+    run.currentPhase = null
     run.status = 'completed'
     run.progress = 100
     run.completedAt = new Date().toISOString()
-    this.emit({ type: 'phase-engine.completed', run })
+    this.emit({ type: 'phase-engine.completed', run: this.publicRun(run) })
     return run
   }
 
   pause(taskId) {
     const run = this.runs.get(taskId)
-    if (run) { run.status = 'paused'; run.updatedAt = new Date().toISOString(); this.emit({ type: 'phase-engine.paused', run }) }
+    if (run) { run.status = 'paused'; run.updatedAt = new Date().toISOString(); this.emit({ type: 'phase-engine.paused', run: this.publicRun(run) }) }
     return run || null
   }
 
   resume(taskId) {
     const run = this.runs.get(taskId)
-    if (run) { run.status = 'running'; run.updatedAt = new Date().toISOString(); this.emit({ type: 'phase-engine.resumed', run }) }
+    if (run) { run.status = 'running'; run.updatedAt = new Date().toISOString(); this.emit({ type: 'phase-engine.resumed', run: this.publicRun(run) }) }
     return run || null
   }
 
   cancel(taskId) {
     const run = this.runs.get(taskId)
-    if (run) { run.status = 'cancelled'; run.updatedAt = new Date().toISOString(); this.emit({ type: 'phase-engine.cancelled', run }) }
+    if (run) { run.status = 'cancelled'; run.updatedAt = new Date().toISOString(); this.emit({ type: 'phase-engine.cancelled', run: this.publicRun(run) }) }
     return run || null
   }
 
   observe(taskId) {
-    return this.runs.get(taskId) || null
+    return this.publicRun(this.runs.get(taskId))
+  }
+
+  publicRun(run) {
+    if (!run) return null
+    return { ...run, phases: run.phases.map((phase) => ({ ...phase })), completed: [...run.completed], currentPhase: run.currentPhase ? { ...run.currentPhase } : null }
   }
 
   snapshot() {
-    return { totalPhases: UNIVERSAL_PHASES.length, groups: PHASE_GROUPS, definitions: UNIVERSAL_PHASES, runs: this.runs.size, activeRuns: [...this.runs.values()].filter((run) => run.status === 'running').length, completedRuns: [...this.runs.values()].filter((run) => run.status === 'completed').length }
+    const runs = [...this.runs.values()]
+    return { totalPhases: UNIVERSAL_PHASES.length, groups: PHASE_GROUPS, definitions: UNIVERSAL_PHASES, runs: this.runs.size, activeRuns: runs.filter((run) => run.status === 'running').length, completedRuns: runs.filter((run) => run.status === 'completed').length, recentRuns: runs.slice(-5).reverse().map((run) => this.publicRun(run)) }
   }
 }
 

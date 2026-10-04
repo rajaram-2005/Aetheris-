@@ -113,6 +113,9 @@ export function createAetherisRuntime(options = {}) {
     observePhaseRun(taskId) {
       return godCore.phaseEngine.observe(taskId)
     },
+    advancePhase(taskId) {
+      return godCore.phaseEngine.step(taskId)
+    },
     planOfflineMedia(payload) {
       return godCore.offlineMedia.plan(payload)
     },

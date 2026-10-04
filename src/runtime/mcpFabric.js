@@ -37,6 +37,7 @@ export const MCP_TOOLS = [
   tool('aetheris.native.plan', 'Plan native intelligence', 'aetheris.native', 'native', 0, 'Select native Aether modules for an intent.'),
   tool('aetheris.phases.plan', 'Plan 150 phases', 'aetheris.phases', 'lifecycle', 0, 'Create a complete 150-phase lifecycle plan.'),
   tool('aetheris.phases.observe', 'Observe phase run', 'aetheris.phases', 'lifecycle', 1, 'Read phase progress without private reasoning.'),
+  tool('aetheris.phases.advance', 'Advance one phase', 'aetheris.phases', 'lifecycle', 2, 'Advance a paused phase run by exactly one phase.'),
   tool('aetheris.knowledge.search', 'Search knowledge', 'aetheris.knowledge', 'memory', 1, 'Search the local vector and graph indexes.'),
   tool('aetheris.knowledge.ingest', 'Ingest knowledge', 'aetheris.knowledge', 'memory', 2, 'Parse and index an approved local source.'),
   tool('aetheris.knowledge.plan', 'Plan open-source RAG', 'aetheris.knowledge', 'memory', 0, 'Plan retrieval, citation, synthesis, verification, and memory write.'),
