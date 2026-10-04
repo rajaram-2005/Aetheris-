@@ -11,6 +11,20 @@ npm run dev
 
 Then open the Vite URL shown in the terminal.
 
+### Secure full coding-agent gateway
+
+The coding-agent UI never accepts or embeds provider secrets. Each installation configures its own server-side credential:
+
+```bash
+cp .env.example .env
+# Set AETHERIS_API_KEY or AETHERIS_API_KEY_FILE and AETHERIS_API_BASE_URL in .env
+npm run agent:server
+npm run dev
+```
+
+The browser calls `/api/agent`; the local gateway adds the provider authorization header server-side. For a multi-user deployment, keep one provider credential in the server secret manager and issue authenticated user sessions—do not distribute one shared key in the installer or frontend bundle. Rotate any credential that has been pasted into chat, source code, screenshots, or logs.
+
+
 ## Included in this prototype
 
 - Command center with a God Core task composer and quick actions

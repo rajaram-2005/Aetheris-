@@ -75,6 +75,7 @@ const NAV_ITEMS = [
   { id: 'workflows', label: 'Workflows', icon: Workflow, count: '04' },
   { id: 'agents', label: 'Agent fabric', icon: Bot, count: '56' },
   { id: 'models', label: 'Model registry', icon: Cpu },
+  { id: 'coding', label: 'Coding agent', icon: Code2, count: 'API' },
   { id: 'mcp', label: 'MCP toolbox', icon: Cable, count: '49' },
   { id: 'plugins', label: 'Plugin market', icon: Boxes, count: '12' },
   { id: 'knowledge', label: 'Knowledge', icon: BookOpen },
@@ -678,6 +679,47 @@ function agentIcon(name) {
   return BrainCircuit
 }
 
+function CodingAgentView({ runtime }) {
+  const [prompt, setPrompt] = useState('Inspect the project architecture and propose the next safe coding step.')
+  const [context, setContext] = useState('Aetheris is a local-first AIOS control plane. Keep changes scoped, tested, and attributable.')
+  const [health, setHealth] = useState(null)
+  const [response, setResponse] = useState(null)
+  const [error, setError] = useState(null)
+  const [running, setRunning] = useState(false)
+
+  useEffect(() => {
+    let active = true
+    runtime.codingAgentHealth().then((result) => { if (active) setHealth(result) })
+    return () => { active = false }
+  }, [runtime])
+
+  const runAgent = async () => {
+    if (!prompt.trim() || running) return
+    setRunning(true)
+    setError(null)
+    setResponse(null)
+    try {
+      const result = await runtime.runCodingAgent(prompt.trim(), { context, maxTokens: 4096 })
+      setResponse(result)
+    } catch (agentError) {
+      setError(agentError.message)
+    } finally {
+      setRunning(false)
+    }
+  }
+
+  const ready = health?.status === 'ready'
+  return (
+    <div className="page-content">
+      <PageHeader eyebrow="DEVELOPER PLANE / SERVER-SIDE PROVIDER GATEWAY" title={<>Build with a <em>full coding agent.</em></>} description="Use a provider-backed coding model without exposing its API key to the browser, user bundles, logs, or MCP payloads." action={{ label: 'Refresh gateway', icon: RefreshCw }} onAction={() => runtime.codingAgentHealth().then(setHealth)} />
+      <div className="coding-agent-health"><div className="coding-health-main"><div className={`coding-health-icon ${ready ? 'ready' : 'waiting'}`}><Code2 size={21} /></div><div><span className="panel-eyebrow">LOCAL CODING-AGENT GATEWAY</span><h2>{ready ? 'Ready for coding requests' : 'Gateway needs configuration'}</h2><p>{ready ? `${health.model || 'Configured model'} · ${health.endpoint || 'server provider'} · browser key exposure disabled` : 'Start the gateway and configure a per-install provider secret in the server environment.'}</p></div><StatusDot tone={ready ? 'mint' : 'gold'} pulse={ready} /></div><div className="coding-health-stats"><div><span>STATUS</span><strong>{health?.status || 'checking'}</strong></div><div><span>KEY LOCATION</span><strong>{health?.keyTransport || 'server only'}</strong></div><div><span>NETWORK</span><strong>{ready ? 'provider' : 'not connected'}</strong></div></div></div>
+      {!ready && <div className="coding-setup-note"><ShieldCheck size={16} /><span><strong>Secure per-install setup:</strong> copy <code>.env.example</code> to <code>.env</code>, add your own key and provider URL, then run <code>npm run agent:server</code>. The Vite client only calls <code>/api/agent</code>.</span></div>}
+      <div className="coding-agent-grid"><section className="panel coding-composer-panel"><PanelHeader eyebrow="FULL CODING AGENT / REQUEST" title="What should it code?" action="Server relay" /><div className="coding-form"><label><span>PROMPT</span><textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} placeholder="Ask for an implementation, review, test plan, or debugging pass." /></label><label><span>PROJECT CONTEXT <i>optional</i></span><textarea className="context" value={context} onChange={(event) => setContext(event.target.value)} /></label><div className="coding-form-foot"><span><LockKeyhole size={13} /> Secret stays server-side</span><button className="primary-small" onClick={runAgent} disabled={running || !prompt.trim()}>{running ? <><Activity size={14} /> Agent working</> : <><Play size={14} /> Run coding agent</>}</button></div></div></section><section className="panel coding-output-panel"><PanelHeader eyebrow="AGENT OUTPUT / PATCH + TESTS" title={response ? 'Response ready' : 'Awaiting a request'} action={response ? 'New request' : 'Structured output'} />{error ? <div className="coding-error"><CircleAlert size={17} /><div><strong>Gateway request failed</strong><span>{error}</span></div></div> : response ? <div className="coding-response"><div className="coding-response-meta"><Pill tone="mint" dot>provider response</Pill><span>{response.model || 'configured model'}</span></div><pre>{response.content || JSON.stringify(response, null, 2)}</pre></div> : <div className="coding-empty"><Code2 size={28} /><strong>Your coding workspace is ready</strong><span>The agent can plan changes, write patches, review code, explain failures, and propose tests through the secure local gateway.</span></div>}</section></div>
+      <div className="coding-capability-row"><span className="panel-eyebrow">CODING CONTRACT</span><Pill tone="mint" dot>Plan before edit</Pill><Pill tone="neutral">Scoped context</Pill><Pill tone="neutral">Patch-oriented</Pill><Pill tone="neutral">Test report</Pill><Pill tone="neutral">No secret exposure</Pill></div>
+    </div>
+  )
+}
+
 function ModelsView() {
   return (
     <div className="page-content">
@@ -970,6 +1012,7 @@ function App() {
       case 'workflows': return <WorkflowsView setActiveView={setActiveView} openTask={openTask} />
       case 'agents': return <AgentsView />
       case 'models': return <ModelsView />
+      case 'coding': return <CodingAgentView runtime={runtime} />
       case 'mcp': return <McpView runtime={runtime} runtimeSnapshot={runtimeSnapshot} />
       case 'plugins': return <PluginsView runtime={runtime} runtimeSnapshot={runtimeSnapshot} />
       case 'knowledge': return <KnowledgeView runtime={runtime} runtimeSnapshot={runtimeSnapshot} />

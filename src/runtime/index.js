@@ -1,8 +1,10 @@
 import { GodCore } from './godCore.js'
+import { CodingAgentClient } from './codingAgent.js'
 
 export function createAetherisRuntime(options = {}) {
   const listeners = new Set()
   const godCore = new GodCore({ ...options, emit: (event) => listeners.forEach((listener) => listener(event)) })
+  const codingAgent = new CodingAgentClient({ basePath: options.codingAgentBasePath || '/api/agent' })
 
   return {
     submit(request, context = {}) {
@@ -111,6 +113,12 @@ export function createAetherisRuntime(options = {}) {
     callMcp(name, args = {}, context = {}) {
       return godCore.mcp.call(name, args, context)
     },
+    codingAgentHealth() {
+      return codingAgent.health()
+    },
+    runCodingAgent(prompt, options = {}) {
+      return codingAgent.run(prompt, options)
+    },
     getTrace(taskId) {
       return godCore.observability.get(taskId)
     },
@@ -176,3 +184,4 @@ export * from './offlineMemory.js'
 export * from './offlineMedia.js'
 export * from './mcpFabric.js'
 export * from './openSourceKnowledge.js'
+export * from './codingAgent.js'

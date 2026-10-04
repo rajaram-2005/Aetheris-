@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
+    "agent:server": "node server/agentGateway.mjs",
+    "dev:agent": "node server/agentGateway.mjs",
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0"
   },
