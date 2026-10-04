@@ -1,5 +1,5 @@
 export const API_ROUTES = [
-  '/chat', '/input', '/tasks', '/agents', '/models', '/memory', '/knowledge', '/files', '/vision', '/audio', '/image', '/video', '/3d', '/tools', '/mcp', '/workflows', '/apps', '/terminal', '/browser', '/devices', '/simulation', '/evaluate', '/plugins', '/health', '/architecture', '/phases',
+  '/chat', '/input', '/language', '/tasks', '/agents', '/models', '/memory', '/knowledge', '/files', '/vision', '/audio', '/image', '/video', '/3d', '/tools', '/mcp', '/workflows', '/apps', '/terminal', '/browser', '/devices', '/simulation', '/evaluate', '/plugins', '/health', '/architecture', '/phases',
 ]
 
 export class UniversalApi {
@@ -14,6 +14,7 @@ export class UniversalApi {
     let data = null
     if (known && route === '/chat' && method === 'POST' && body.message) data = this.runtime?.submit(body.message, body.context || {})
     else if (known && route === '/input' && method === 'POST') data = this.runtime?.inputReception?.receive(body.input || body, { source: body.source || 'api', sessionId })
+    else if (known && route === '/language' && method === 'POST') data = this.runtime?.languageDetection?.detect(body.input || body)
     else if (known && route === '/tasks' && body.id && body.action === 'approve') data = this.runtime?.approve(body.id)
     else if (known && route === '/tasks' && body.id && body.action === 'pause') data = this.runtime?.pauseTask(body.id, body.reason)
     else if (known && route === '/tasks' && body.id && body.action === 'resume') data = this.runtime?.resumeTask(body.id)

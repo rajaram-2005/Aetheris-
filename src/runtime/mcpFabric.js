@@ -35,6 +35,7 @@ export const MCP_TOOLS = [
   tool('aetheris.core.resume_task', 'Resume task', 'aetheris.core', 'conversation', 2, 'Resume a paused task from its last safe checkpoint.'),
   tool('aetheris.core.cancel_task', 'Cancel task', 'aetheris.core', 'conversation', 2, 'Cancel a run and release its local resources.'),
   tool('aetheris.experience.receive_input', 'Receive input', 'aetheris.experience', 'experience', 0, 'Normalize text, voice, image, video, file, screen, or multimodal input.'),
+  tool('aetheris.experience.detect_language', 'Detect language', 'aetheris.experience', 'experience', 0, 'Detect language and communication mode offline.'),
   tool('aetheris.native.discover', 'Discover native intelligence', 'aetheris.native', 'native', 0, 'Discover first-party Aetheris intelligence contracts.'),
   tool('aetheris.native.plan', 'Plan native intelligence', 'aetheris.native', 'native', 0, 'Select native Aether modules for an intent.'),
   tool('aetheris.phases.plan', 'Plan 150 phases', 'aetheris.phases', 'lifecycle', 0, 'Create a complete 150-phase lifecycle plan.'),

@@ -10,6 +10,9 @@ export function createAetherisRuntime(options = {}) {
     receiveInput(input, metadata = {}) {
       return godCore.inputReception.receive(input, metadata)
     },
+    detectLanguage(input) {
+      return godCore.languageDetection.detect(input)
+    },
     submit(request, context = {}) {
       return godCore.submit(request, context)
     },
@@ -206,3 +209,4 @@ export * from './codingAgent.js'
 export * from './phaseEngine.js'
 export * from './nativeIntelligence.js'
 export * from './inputReception.js'
+export * from './languageDetection.js'
